@@ -1,0 +1,65 @@
+ACCREG3_FLAG_BUSYR	accregs.h	11
+ACCREG3_FLAG_BUSYW	accregs.h	10
+ACCREG3_FLAG_CLEAR	accregs.h	8
+ACCREG3_WMODE_FRAME	accregs.h	3
+ACCREG3_WMODE_LEVEL1	accregs.h	4
+ACCREG3_WMODE_LEVEL2	accregs.h	6
+ACCREG3_WMODE_MASK	accregs.h	2
+ACCREG3_WMODE_RECODE12	accregs.h	5
+Mmain	main.c	/^int main() {$/
+STDOUT_IS_PS7_UART	platform_config.h	4
+Swap	main.h	/^#define Swap(v0, v1) do { typeof(v0) zzzswap = v0;/
+UART_BAUD	platform.c	47
+UART_DEVICE_ID	platform_config.h	5
+XTime_DiffCurrReal_Double	main.c	/^double XTime_DiffCurrReal_Double(XTime *oldtime) {/
+XTime_GetDiff_Double	main.c	/^double XTime_GetDiff_Double(XTime *oldtime, XTime /
+XTime_ToDouble	main.c	/^double XTime_ToDouble(XTime *t) {$/
+__PLATFORM_CONFIG_H_	platform_config.h	2
+__PLATFORM_H_	platform.h	34
+abort_printf	main.h	/^#define abort_printf(fmt, ...) do { \\$/
+accreg_check_busyr	accregs.h	/^#define accreg_check_busyr()      ((accreg_rd(3) &/
+accreg_check_busyw	accregs.h	/^#define accreg_check_busyw()      ((accreg_rd(3) &/
+accreg_check_clear	accregs.h	/^#define accreg_check_clear()      ((accreg_rd(3) &/
+accreg_clear	accregs.h	/^#define accreg_clear()            accreg_wr(3, acc/
+accreg_config_get	accregs.c	/^void accreg_config_get() {$/
+accreg_config_print	accregs.c	/^void accreg_config_print() {$/
+accreg_get_lvl1_nbin	accregs.h	/^#define accreg_get_lvl1_nbin()    (accreg_rd(1) & /
+accreg_get_lvl1_nbneu	accregs.h	/^#define accreg_get_lvl1_nbneu()   (accreg_rd(0) & /
+accreg_get_lvl2_nbneu	accregs.h	/^#define accreg_get_lvl2_nbneu()   ((accreg_rd(0) >/
+accreg_lvl1_fsize	accregs.c	34
+accreg_lvl1_max_fsize	accregs.c	30
+accreg_lvl1_max_nbneu	accregs.c	31
+accreg_lvl1_nbneu	accregs.c	35
+accreg_lvl2_max_nbneu	accregs.c	32
+accreg_lvl2_nbneu	accregs.c	36
+accreg_print_regs	accregs.c	/^void accreg_print_regs() {$/
+accreg_rd	accregs.h	/^static inline uint32_t accreg_rd(unsigned reg) {$/
+accreg_set_lvl1_fsize	accregs.h	/^#define accreg_set_lvl1_fsize(nb) accreg_wr(0, (ac/
+accreg_set_lvl1_nbneu	accregs.h	/^#define accreg_set_lvl1_nbneu(nb) accreg_wr(1, (ac/
+accreg_set_lvl2_nbneu	accregs.h	/^#define accreg_set_lvl2_nbneu(nb) accreg_wr(2, (ac/
+accreg_set_nboutputs	accregs.h	/^#define accreg_set_nboutputs(nb)  accreg_wr(6, nb)/
+accreg_set_wmode_frame	accregs.h	/^#define accreg_set_wmode_frame()  accreg_wr(3, (ac/
+accreg_set_wmode_lvl1	accregs.h	/^#define accreg_set_wmode_lvl1()   accreg_wr(3, (ac/
+accreg_set_wmode_lvl2	accregs.h	/^#define accreg_set_wmode_lvl2()   accreg_wr(3, (ac/
+accreg_set_wmode_rec12	accregs.h	/^#define accreg_set_wmode_rec12()  accreg_wr(3, (ac/
+accreg_wr	accregs.h	/^static inline void accreg_wr(unsigned reg, uint32_/
+accregs_ptr	accregs.c	18
+cleanup_platform	platform.c	/^cleanup_platform()$/
+config_neu1	dataset.h	9
+config_neu2	dataset.h	26
+config_recode	dataset.h	23
+data_frames	dataset.h	40
+disable_caches	platform.c	/^disable_caches()$/
+enable_caches	platform.c	/^enable_caches()$/
+frames_nb	dataset.h	3
+fsize	dataset.h	4
+init_platform	platform.c	/^init_platform()$/
+init_uart	platform.c	/^init_uart()$/
+malloc_check	main.h	/^#define malloc_check(size) malloc_with_loc(size, _/
+malloc_with_loc	main.c	/^void* malloc_with_loc(unsigned size, char* file, u/
+neu1	dataset.h	5
+neu2	dataset.h	6
+nn_process_clear	neuralnetwork.c	/^void nn_process_clear() {$/
+nn_process_config	neuralnetwork.c	/^void nn_process_config() {$/
+nn_process_frames	neuralnetwork.c	/^void nn_process_frames() {$/
+uint_roundup	main.h	/^static inline unsigned uint_roundup(unsigned addr,/
