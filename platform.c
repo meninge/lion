@@ -39,7 +39,7 @@
  * Uncomment the following line if ps7 init source files are added in the
  * source directory for compiling example outside of SDK.
  */
-/*#include "ps7_init.h"*/
+//#include "ps7_init.h"
 
 #ifdef STDOUT_IS_16550
  #include "xuartns550_l.h"
@@ -91,7 +91,7 @@ init_platform()
      * Make sure that the ps7_init.c and ps7_init.h files are included
      * along with this example source files for compilation.
      */
-    /* ps7_init();*/
+    //ps7_init();
     enable_caches();
     init_uart();
 }
