@@ -38,28 +38,76 @@ void nn_process_clear() {
 }
 
 void nn_process_config() {
+	int i = 0;
 
 	// Reset the accelerator
 	nn_process_clear();
 
-	print("Send config for level 1\n");
 
-	uint32_t* config_buffer_alloc = NULL;
-	uint32_t* config_buffer = NULL;
+	int32_t *config_buffer_1_alloc = NULL, *config_buffer_1 = NULL;
+	int32_t *config_buffer_2_alloc = NULL, *config_buffer_2 = NULL;
+	int32_t *config_buffer_rec_alloc = NULL, *config_buffer_rec = NULL;
 
-	const unsigned bufsize = neu1 * fsize * sizeof(*config_buffer) + 32 * 4;
-	config_buffer_alloc = malloc_check(bufsize);
-	config_buffer = (void*)uint_roundup((long)config_buffer_alloc, 16*4);
+	// Attention : bufsize doit être un multiple de 16 * 4 !
+	const unsigned bufsize_1 = accreg_lvl1_nbneu * fsize * sizeof(*config_buffer_1) + 16 * 4;
+	const unsigned bufsize_2 = accreg_lvl2_nbneu * fsize * sizeof(*config_buffer_2) + 16 * 4;
+	const unsigned bufsize_rec = accreg_lvl2_nbneu * sizeof(*config_buffer_rec) + 16 * 4;
+	// On alloue bufsize sur une adresse multiple de 16 * 4 octets.
+	// On rajoute 16 * 4 pour pouvoir réaligner ensuite sans perdre de données.
+	config_buffer_1_alloc = malloc_check(bufsize_1);
+	config_buffer_2_alloc = malloc_check(bufsize_2);
+	config_buffer_rec_alloc = malloc_check(bufsize_rec);
+	// Aller à la prochaine frontière des multiples de 16 * 4 octets.
+	config_buffer_1 = (void *)uint_roundup((long)config_buffer_1_alloc, 16 * 4);
+	config_buffer_2 = (void *)uint_roundup((long)config_buffer_2_alloc, 16 * 4);
+	config_buffer_rec = (void *)uint_roundup((long)config_buffer_rec_alloc, 16 * 4);
 
-	// FIXME Fill that buffer
+	// w1 contains given weights for level 1
+	for (i = 0; i < accreg_lvl1_nbneu * fsize; i++) {
+		//config_buffer_1[i] = w1[i];
+		config_buffer_1[i] = config_neu1[i];
+	}
+	// w2 contains given weights for level 2
+	for (i = 0; i < accreg_lvl2_nbneu * fsize; i++) {
+		//config_buffer_2[i] = w2[i];
+		config_buffer_2[i] = config_neu2[i];
+	}
+	// b1 contains given weights for recode level
+	for (i = 0; i < accreg_lvl1_nbneu; i++) {
+		//config_buffer_rec[i] = b1[i];
+		config_buffer_rec[i] = config_recode[i];
+	}
 
 	// Flush cached data to DDR memory
 	Xil_DCacheFlush();
 
+	accreg_print_regs();
+
+	print("Send config for level 1\n");
 	// Write config for level 1
 	accreg_set_wmode_lvl1();
-	accreg_wr(10, (long)config_neu1);
-	accreg_wr(12, bufsize / 16 / 4);
+	accreg_wr(10, (uint32_t)config_buffer_1);
+	// 1 burst is 16 * 4 bytes.
+	accreg_wr(12, bufsize_1 / 16 / 4);
+	while(accreg_check_busyr());
+
+	accreg_print_regs();
+
+
+	print("Send config for recode level\n");
+	// Write config for recode level
+	accreg_set_wmode_rec12();
+	accreg_wr(10, (uint32_t)config_buffer_rec);
+	// 1 burst is 16 * 4 bytes.
+	accreg_wr(12, bufsize_rec / 16 / 4);
+	while(accreg_check_busyr());
+
+	print("Send config for level 2\n");
+	// Write config for level 2
+	accreg_set_wmode_lvl2();
+	accreg_wr(10, (uint32_t)config_buffer_2);
+	// 1 burst is 16 * 4 bytes.
+	accreg_wr(12, bufsize_2 / 16 / 4);
 	while(accreg_check_busyr());
 
 	// Reset the accelerator
@@ -68,6 +116,7 @@ void nn_process_config() {
 
 void nn_process_frames() {
 	XTime oldtime;
+	int i;
 
 	// Reset the accelerator
 	nn_process_clear();
@@ -88,7 +137,10 @@ void nn_process_frames() {
 	out_buffer_alloc = malloc_check(out_bufsize);
 	out_buffer = (void*)uint_roundup((long)out_buffer_alloc, 16*4);
 
-	// FIXME Fill the buffer of frames
+	for (i = 0; i < frames_nb * fsize; i++) {
+		frames_buffer[i] = data_frames[i];
+		//frames_buffer[i] = frames[i];
+	}
 
 	// Flush cached data to DDR memory
 	Xil_DCacheFlush();
@@ -124,9 +176,10 @@ void nn_process_frames() {
 	Xil_DCacheInvalidateRange((unsigned)out_buffer, frames_bufsize);
 
 	unsigned outidx = 0;
-	for(unsigned f=0; f<neu2; f++) {
+	for(unsigned f=0; f<frames_nb; f++) {
 		printf("Frame %u:", f);
 		for(unsigned n=0; n<neu2; n++) printf(" %i", (int)out_buffer[outidx++]);
+		//printf("Result: %d\n", labels[f]);
 		printf("\n");
 	}
 }
