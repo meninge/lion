@@ -55,4 +55,6 @@ void accreg_print_regs();
 void accreg_config_get();
 void accreg_config_print();
 
+void accregs_print_fifo_counts();
+
 

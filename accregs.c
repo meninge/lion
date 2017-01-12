@@ -26,6 +26,25 @@ void accreg_print_regs() {
 	printf("\n");
 }
 
+// Use the 14th register to print the count of different FIFOs according to
+// given bit mapping.
+void accregs_print_fifo_counts()
+{
+	unsigned register14 = (unsigned)accreg_rd(14);
+	unsigned register15 = (unsigned)accreg_rd(15);
+
+	printf("FIFO rd count : %u\n", (register14 & 0xFF000000) >> 24);
+	printf("FIFO 1r count : %u\n", (register14 & 0x000000FF) >> 0);
+	printf("FIFO r2 count : %u\n", (register14 & 0x0000FF00) >> 8);
+	printf("FIFO 2o count : %u\n", (register14 & 0x00FF0000) >> 16);
+	printf("FIFO wr count : %u\n", (register15 & 0x000000FF) >> 0);
+}
+
+void accregs_print_rdy_ack()
+{
+	unsigned register15 = (unsigned)accreg_rd(15);
+}
+
 
 unsigned accreg_lvl1_max_fsize = 0;
 unsigned accreg_lvl1_max_nbneu = 0;
