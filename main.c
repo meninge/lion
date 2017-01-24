@@ -64,14 +64,7 @@ int main() {
 	XUartPs_WriteReg(XPAR_PS7_UART_1_BASEADDR, XUARTPS_IDR_OFFSET, XUARTPS_IXR_MASK);
 
 	// Launch main computing
-	accreg_clear();
-	while (accreg_check_clear());
-	int i = 10;
-	while (i--) {
-		accreg_print_regs();
-	}
 	nn_process_config();
-
 	nn_process_frames();
 
 	print("Finished - Entering infinite loop\n");

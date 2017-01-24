@@ -40,11 +40,23 @@ void accregs_print_fifo_counts()
 	printf("FIFO wr count : %u\n", (register15 & 0x000000FF) >> 0);
 }
 
-void accregs_print_rdy_ack()
+int32_t accregs_pop_r2()
 {
-	unsigned register15 = (unsigned)accreg_rd(15);
+	return (int32_t)accreg_rd(8);
+}
+int32_t accregs_pop_1r()
+{
+	return (int32_t)accreg_rd(8);
+}
+int32_t accregs_pop_rd()
+{
+	return (int32_t)accreg_rd(8);
 }
 
+void accregs_push_rd(uint32_t val)
+{
+	accreg_wr(9, val);
+}
 
 unsigned accreg_lvl1_max_fsize = 0;
 unsigned accreg_lvl1_max_nbneu = 0;

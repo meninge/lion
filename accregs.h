@@ -31,6 +31,8 @@
 
 #define accreg_set_nboutputs(nb)  accreg_wr(6, nb)
 
+// Send size of the 32 bits array and returns the needed number of bursts
+#define MINIMUM_BURSTS(n) ((((n) % 16 == 0) ? (n) : ((n) + 16)) / 16)
 
 
 extern unsigned accreg_lvl1_max_fsize;
@@ -56,5 +58,9 @@ void accreg_config_get();
 void accreg_config_print();
 
 void accregs_print_fifo_counts();
+int32_t accregs_pop_r2();
+int32_t accregs_pop_1r();
+int32_t accregs_pop_rd();
+void accregs_push_rd(uint32_t val);
 
 
