@@ -20,12 +20,10 @@
 
 #include "dataset.h"
 
-
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 //#define POP_RD
 //#define POP_1R
 //#define POP_R2
-
 
 void nn_process_clear() {
 	// Reset the accelerator
@@ -123,7 +121,7 @@ void nn_process_config() {
 	// Flush cached data to DDR memory
 	Xil_DCacheFlush();
 
-	sleep(5);
+	//sleep(5);
 	
 	nn_process_clear();
 
@@ -153,7 +151,7 @@ void nn_process_config() {
 	while(accreg_check_busyr());
 	accregs_print_fifo_counts();
 
-	sleep(1);
+	//sleep(1);
 
 	print("Send config for level 1\n");
 	nn_process_clear();
@@ -184,7 +182,7 @@ void nn_process_config() {
 	accregs_print_fifo_counts();
 	while(accreg_check_busyr());
 
-	sleep(5);
+	//sleep(5);
 
 	print("Send config for level 2\n");
 	nn_process_clear();
@@ -214,7 +212,7 @@ void nn_process_config() {
 	while(accreg_check_busyr());
 	accregs_print_fifo_counts();
 
-	sleep(5);
+	//sleep(5);
 
 	printf("FIN de config\n");
 
@@ -279,8 +277,6 @@ void nn_process_frames() {
 
 	XTime_GetTime(&oldtime);
 
-	//nn_process_clear();
-
 	// Set the number of results to get
 	accreg_set_nboutputs(FRAMES_NB * NEU2);
 
@@ -310,9 +306,11 @@ void nn_process_frames() {
 	printf("FINI\n");
 #endif
 
+#ifdef PRINT_DEBUG
 	accregs_print_fifo_counts();
 	sleep(5);
 	accregs_print_fifo_counts();
+	#endif
 
 #ifdef POP_1R
 	for (i = 0; i < NEU1 * FRAMES_NB; i++) {
@@ -346,13 +344,17 @@ void nn_process_frames() {
 		printf("fifo_r2 %d: %ld\n", i%NEU1, (long int)accregs_pop_r2());
 	}
 #endif 
+#ifdef PRINT_DEBUG
 	accregs_print_fifo_counts();
 	accreg_print_regs();
+#endif
 
 	while(accreg_check_busyr());
 	while(accreg_check_busyw());
 
+#ifdef PRINT_DEBUG
 	accregs_print_fifo_counts();
+#endif
 
 	double d = XTime_DiffCurrReal_Double(&oldtime);
 
