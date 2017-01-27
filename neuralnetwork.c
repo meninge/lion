@@ -24,7 +24,7 @@
 //#define POP_RD
 //#define POP_1R
 //#define POP_R2
-//#define MNIST
+#define MNIST
 
 void nn_process_clear() {
 	// Reset the accelerator
@@ -289,7 +289,7 @@ void nn_process_frames() {
 #ifdef PRINT_DEBUG
 	printf("out_buffer before bursts:\n");
 #endif
-	for (int i = 0; i < FRAMES_NB * NEU2; i++) {
+	for (i = 0; i < FRAMES_NB * NEU2; i++) {
 		out_buffer[i] = 42;
 #ifdef PRINT_DEBUG
 		printf("outbuf before burst: %d: %ld\n", i, (long)out_buffer[i]);
@@ -395,7 +395,7 @@ void nn_process_frames() {
 
 	printf("out_buffer after all:\n");
 
-	for (int i = 0; i < FRAMES_NB * NEU2; i++) {
+	for (i = 0; i < FRAMES_NB * NEU2; i++) {
 		printf("RES FRAME N°%d, res n°%d: %ld\n", i/NEU2, i%NEU2, (long)out_buffer[i]);
 #ifdef MNIST
 		if (out_buffer[i] > max[i / NEU2]) {
@@ -405,7 +405,7 @@ void nn_process_frames() {
 #endif
 	}
 #ifdef MNIST
-	for (int i = 0; i < FRAMES_NB; i++) {
+	for (i = 0; i < FRAMES_NB; i++) {
 		if (digit[i] == labels[i]) {
 			success_hits++;
 		}
