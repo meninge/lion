@@ -1,16 +1,17 @@
 
 // Simple configuration
+/*
 #define FRAMES_NB 64
 #define FSIZE     64
 #define NEU1      4
 #define NEU2      3
-
-/* Dimensions for MNIST application
-#define frames_nb 2
-#define fsize     784
-#define neu1      100
-#define neu2      10
 */
+
+// Dimensions for MNIST application
+#define FRAMES_NB 2
+#define FSIZE     784
+#define NEU1      100
+#define NEU2      10
 
 // Config for neurons, layer 1
 const uint32_t config_neu1[NEU1][FSIZE] = {

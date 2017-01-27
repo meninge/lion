@@ -88,7 +88,7 @@ void nn_process_config() {
 	for (j = 0; j < accreg_lvl1_nbneu; j++) {
 		for (i = 0; i < FSIZE; i++) {
 #ifdef MNIST
-			//config_buffer_1[j * FSIZE + i] = w1[j][i / ROWS][i % COLUMNS];
+			config_buffer_1[j * FSIZE + i] = w1[j][i / ROWS][i % COLUMNS];
 #else
 			config_buffer_1[j * FSIZE + i] = config_neu1[j][i];
 #endif
@@ -106,7 +106,7 @@ void nn_process_config() {
 	for (j = 0; j < accreg_lvl2_nbneu; j++) {
 		for (i = 0; i < accreg_lvl1_nbneu; i++) {
 #ifdef MNIST
-			//config_buffer_2[j * accreg_lvl1_nbneu + i] = w2[j][i];
+			config_buffer_2[j * accreg_lvl1_nbneu + i] = w2[j][i];
 #else
 			config_buffer_2[j * accreg_lvl1_nbneu + i] = config_neu2[j][i];
 #endif
@@ -124,7 +124,7 @@ void nn_process_config() {
 		/*
 		 * MNIST application
 		 */
-		//config_buffer_rec[i] = b1[i];
+		config_buffer_rec[i] = b1[i];
 #ifdef PRINT_DEBUG
 		printf("poids recode: %d: %ld\n", i, (long)config_buffer_rec[i]);
 #endif
@@ -161,6 +161,7 @@ void nn_process_config() {
 #endif
 
 	while(accreg_check_busyr());
+	free(config_buffer_rec_alloc);
 	accregs_print_fifo_counts();
 
 	//sleep(1);
@@ -193,6 +194,7 @@ void nn_process_config() {
 
 	accregs_print_fifo_counts();
 	while(accreg_check_busyr());
+	free(config_buffer_1_alloc);
 
 	//sleep(5);
 
@@ -222,6 +224,7 @@ void nn_process_config() {
 #endif
 	
 	while(accreg_check_busyr());
+	free(config_buffer_2_alloc);
 	accregs_print_fifo_counts();
 
 	//sleep(5);
@@ -250,11 +253,9 @@ void nn_process_frames() {
 	int32_t* out_buffer = NULL;
 
 #ifdef MNIST
-	/*
 	int32_t max[FRAMES_NB] = {-100000};
 	int32_t digit[FRAMES_NB] = {-1};
 	uint32_t success_hits = 0;
-	*/
 #endif
 
 	const unsigned frames_bufsize = FRAMES_NB * FSIZE * sizeof(*frames_buffer) + 16 * 4;
@@ -275,7 +276,7 @@ void nn_process_frames() {
 	for (j = 0; j < FRAMES_NB; j++) {
 		for (i = 0; i < FSIZE; i++) {
 #ifdef MNIST
-			//frames_buffer[j * FSIZE + i] = frames[j][i];
+			frames_buffer[j * FSIZE + i] = frames[j][i];
 #else
 			frames_buffer[j * FSIZE + i] = data_frames[j][i];
 #endif
@@ -397,24 +398,23 @@ void nn_process_frames() {
 	for (int i = 0; i < FRAMES_NB * NEU2; i++) {
 		printf("RES FRAME N°%d, res n°%d: %ld\n", i/NEU2, i%NEU2, (long)out_buffer[i]);
 #ifdef MNIST
-		/*
 		if (out_buffer[i] > max[i / NEU2]) {
 			max[i / NEU2] = out_buffer[i];
 			digit[i / NEU2] = i % NEU2;
 		}
-		*/
 #endif
 	}
 #ifdef MNIST
-	/*
 	for (int i = 0; i < FRAMES_NB; i++) {
 		if (digit[i] == labels[i]) {
 			success_hits++;
 		}
 	}
 	printf("Taux de réussite : %.2f%%\n", (success_hits / (float)FRAMES_NB) * 100);
-	*/
 #endif
 
 	printf("FIN d'envoi des frames\n");
+
+	free(frames_buffer_alloc);
+	free(out_buffer_alloc);
 }
