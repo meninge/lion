@@ -24,6 +24,7 @@
 //#define POP_RD
 //#define POP_1R
 //#define POP_R2
+//#define MNIST
 
 void nn_process_clear() {
 	// Reset the accelerator
@@ -55,13 +56,13 @@ void nn_process_config() {
 	const unsigned bufsize_2 = accreg_lvl2_nbneu * accreg_lvl1_nbneu * sizeof(*config_buffer_2) + 16 * 4;
 	const unsigned bufsize_rec = accreg_lvl1_nbneu * sizeof(*config_buffer_rec) + 16 * 4;
 
-
 	// On alloue bufsize sur une adresse multiple de 16 * 4 octets.
 	// On rajoute 16 * 4 pour pouvoir réaligner ensuite sans perdre de données.
 	printf("bufsize_1 = %u\n", bufsize_1);
 	printf("bufsize_2 = %u\n", bufsize_2);
 	printf("bufsize_rec = %u\n", bufsize_rec);
 
+	// Données MNIST de taille phénoménale, gigantesque, ces malloc vont-ils passer ?
 	config_buffer_1_alloc = malloc_check(bufsize_1);
 	config_buffer_2_alloc = malloc_check(bufsize_2);
 	config_buffer_rec_alloc = malloc_check(bufsize_rec);
@@ -86,7 +87,11 @@ void nn_process_config() {
 
 	for (j = 0; j < accreg_lvl1_nbneu; j++) {
 		for (i = 0; i < FSIZE; i++) {
+#ifdef MNIST
+			//config_buffer_1[j * FSIZE + i] = w1[j][i / ROWS][i % COLUMNS];
+#else
 			config_buffer_1[j * FSIZE + i] = config_neu1[j][i];
+#endif
 #ifdef PRINT_DEBUG
 			printf("poids L1: %d: %ld\n", j * FSIZE + i, (long)config_buffer_1[ j * FSIZE + i]);
 #endif
@@ -100,7 +105,11 @@ void nn_process_config() {
 
 	for (j = 0; j < accreg_lvl2_nbneu; j++) {
 		for (i = 0; i < accreg_lvl1_nbneu; i++) {
+#ifdef MNIST
+			//config_buffer_2[j * accreg_lvl1_nbneu + i] = w2[j][i];
+#else
 			config_buffer_2[j * accreg_lvl1_nbneu + i] = config_neu2[j][i];
+#endif
 			#ifdef PRINT_DEBUG
 			printf("poids L2: %d: %ld\n", j * accreg_lvl1_nbneu + i, (long)config_buffer_2[ j * accreg_lvl1_nbneu + i]);
 			#endif
@@ -111,8 +120,11 @@ void nn_process_config() {
 	printf("config_buffer_rec:\n");
 #endif
 	for (i = 0; i < accreg_lvl1_nbneu; i++) {
-		//config_buffer_rec[i] = b1[i];
 		config_buffer_rec[i] = config_recode[i];
+		/*
+		 * MNIST application
+		 */
+		//config_buffer_rec[i] = b1[i];
 #ifdef PRINT_DEBUG
 		printf("poids recode: %d: %ld\n", i, (long)config_buffer_rec[i]);
 #endif
@@ -237,6 +249,14 @@ void nn_process_frames() {
 	int32_t* out_buffer_alloc = NULL;
 	int32_t* out_buffer = NULL;
 
+#ifdef MNIST
+	/*
+	int32_t max[FRAMES_NB] = {-100000};
+	int32_t digit[FRAMES_NB] = {-1};
+	uint32_t success_hits = 0;
+	*/
+#endif
+
 	const unsigned frames_bufsize = FRAMES_NB * FSIZE * sizeof(*frames_buffer) + 16 * 4;
 	frames_buffer_alloc = malloc_check(frames_bufsize);
 	printf("frames_buffer_alloc = 0x%p\n", frames_buffer_alloc);
@@ -254,7 +274,11 @@ void nn_process_frames() {
 #endif
 	for (j = 0; j < FRAMES_NB; j++) {
 		for (i = 0; i < FSIZE; i++) {
+#ifdef MNIST
+			//frames_buffer[j * FSIZE + i] = frames[j][i];
+#else
 			frames_buffer[j * FSIZE + i] = data_frames[j][i];
+#endif
 			#ifdef PRINT_DEBUG
 			printf("frame %d pix %d: %lu\n", j, i, (unsigned long)frames_buffer[j * FSIZE + i]);
 			#endif
@@ -372,10 +396,25 @@ void nn_process_frames() {
 
 	for (int i = 0; i < FRAMES_NB * NEU2; i++) {
 		printf("RES FRAME N°%d, res n°%d: %ld\n", i/NEU2, i%NEU2, (long)out_buffer[i]);
+#ifdef MNIST
+		/*
+		if (out_buffer[i] > max[i / NEU2]) {
+			max[i / NEU2] = out_buffer[i];
+			digit[i / NEU2] = i % NEU2;
+		}
+		*/
+#endif
 	}
+#ifdef MNIST
+	/*
+	for (int i = 0; i < FRAMES_NB; i++) {
+		if (digit[i] == labels[i]) {
+			success_hits++;
+		}
+	}
+	printf("Taux de réussite : %.2f%%\n", (success_hits / (float)FRAMES_NB) * 100);
+	*/
+#endif
 
 	printf("FIN d'envoi des frames\n");
-
-
-
 }

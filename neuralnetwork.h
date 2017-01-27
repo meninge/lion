@@ -10,6 +10,10 @@ void nn_process_frames();
 
 // To be used for MNIST application
 /*
+#define ROWS 28
+#define COLUMNS 28
+ */
+/*
  * Extern declarations of weights and constants.
  */
 /*

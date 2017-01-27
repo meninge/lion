@@ -8,7 +8,7 @@
 /* Dimensions for MNIST application
 #define frames_nb 2
 #define fsize     784
-#define neu1      10
+#define neu1      100
 #define neu2      10
 */
 
