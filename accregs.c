@@ -19,7 +19,8 @@ volatile unsigned* accregs_ptr = (void*)0x43C00000;
 
 // Utility function to print the state of relevant IP registers
 void accreg_print_regs() {
-	for(unsigned i=0; i<16; i++) {
+	unsigned i = 0;
+	for(i = 0; i < 16; i++) {
 		if(i > 0) printf(" ");
 		printf("%08x", (unsigned)accreg_rd(i));
 	}
