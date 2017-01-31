@@ -1,3 +1,5 @@
+#ifndef ACCREGS_H_
+#define ACCREGS_H_
 
 #define ACCREG3_WMODE_MASK        0x0000000F
 #define ACCREG3_WMODE_FRAME       0x00000001
@@ -64,3 +66,4 @@ int32_t accregs_pop_rd();
 void accregs_push_rd(uint32_t val);
 
 
+#endif

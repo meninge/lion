@@ -18,13 +18,17 @@
 #include "neuralnetwork.h"
 #include "accregs.h"
 
-#include "dataset.h"
-
 //#define PRINT_DEBUG
+//#define PRINT_RES
 //#define POP_RD
 //#define POP_1R
 //#define POP_R2
-//#define MNIST
+#define MNIST
+
+int32_t result_hard[FRAMES_NB][NEU2];
+int32_t result_soft[FRAMES_NB][NEU2];
+double hard_time = 0;
+double soft_time = 0;
 
 void nn_process_clear() {
 	// Reset the accelerator
@@ -133,11 +137,12 @@ void nn_process_config() {
 	// Flush cached data to DDR memory
 	Xil_DCacheFlush();
 
-	//sleep(5);
 	
+
 	nn_process_clear();
 
 #ifdef PRINT_DEBUG
+	sleep(1);
 	accregs_print_fifo_counts();
 #endif
 
@@ -204,8 +209,6 @@ void nn_process_config() {
 	printf("FINI\n");
 #endif
 
-	//sleep(5);
-
 	print("Send config for level 2\n");
 	nn_process_clear();
 	// Write config for level 2
@@ -233,6 +236,7 @@ void nn_process_config() {
 	
 	while(accreg_check_busyr());
 	free(config_buffer_2_alloc);
+
 #ifdef PRINT_DEBUG
 	accregs_print_fifo_counts();
 	sleep(1);
@@ -314,9 +318,6 @@ void nn_process_frames() {
 	// Set the number of results to get
 	accreg_set_nboutputs(FRAMES_NB * NEU2);
 
-
-
-	printf("Send frames:\n");
 	// Send the frames, receive results
 	accreg_set_wmode_frame();
 
@@ -392,22 +393,18 @@ void nn_process_frames() {
 	accregs_print_fifo_counts();
 #endif
 
-	double d = XTime_DiffCurrReal_Double(&oldtime);
 
 	// Reset the accelerator
 	nn_process_clear();
 
-	printf("Time: %u frames done in %g seconds => %g frames/s\n", FRAMES_NB, d, FRAMES_NB/d);
 
 	// Force the cache to get data from DDR
 	Xil_DCacheInvalidateRange((unsigned)out_buffer, out_bufsize);
 
-	sleep(1);
-
-	printf("out_buffer after all:\n");
-
 	for (i = 0; i < FRAMES_NB * NEU2; i++) {
+#ifdef PRINT_RES
 		printf("RES FRAME N°%d, res n°%d: %ld\n", i/NEU2, i%NEU2, (long)out_buffer[i]);
+#endif
 #ifdef MNIST
 		/*
 		 * Ajout de la constante après le calcul d'accumulation
@@ -422,15 +419,17 @@ void nn_process_frames() {
 			max[i / NEU2] = out_buffer[i];
 			digit[i / NEU2] = i % NEU2;
 		}
+		result_hard[i / NEU2][i % NEU2] = out_buffer[i];
 #endif
 	}
+	hard_time = XTime_DiffCurrReal_Double(&oldtime);
 #ifdef MNIST
 	for (i = 0; i < FRAMES_NB; i++) {
 		if (digit[i] == labels[i]) {
 			success_hits++;
 		}
 	}
-	printf("Taux de réussite : %.2f%%\n", (success_hits / (float)FRAMES_NB) * 100);
+	printf("hard, taux de réussite : %.2f%%\n", (success_hits / (float)FRAMES_NB) * 100);
 #endif
 
 	printf("FIN d'envoi des frames\n");
@@ -441,4 +440,120 @@ void nn_process_frames() {
 
 void nn_soft(void)
 {
+	int64_t out1[NEU1] = {0};
+	int64_t out2[NEU2] = {0};
+	int32_t i, j, n, image;
+	int32_t max = 0;
+	int32_t success = 0;
+	XTime oldtime;
+
+	XTime_GetTime(&oldtime);
+	for (image = 0; image < FRAMES_NB; image++) {
+		/*
+		 * Initialization
+		 */
+		for (n = 0; n < NEU1; n++) {
+			out1[n] = 0;
+		}
+		for (n = 0; n < NEU2; n++) {
+			out2[n] = 0;
+		}
+		max = 0;
+		/*
+		 * First layer computation
+		 */
+		for (i = 0; i < ROWS; i++) {
+			for (j = 0; j < COLUMNS; j++) {
+				for (n = 0; n < NEU1; n++) {
+#ifdef MNIST
+					out1[n] += frames[image][i * ROWS + j]
+						* w1[n][i][j];
+#else
+					out1[n] += data_frames[image][i * ROWS + j]
+						* config_neu1[n][i * ROWS + j];
+#endif
+				}
+			}
+		}
+		/*
+		 * Cut to 32 bits values and apply activation function
+		 */
+		for (n = 0; n < NEU1; n++) {
+			out1[n] = cut(out1[n]);
+#ifdef MNIST
+			out1[n] += b1[n];
+#else
+			out1[n] += config_recode[n];
+#endif
+			out1[n] = (out1[n] > 0) ? out1[n] : 0;
+
+			out1[n] = cut(out1[n]);
+		}
+
+		/*
+		 * Second layer computation
+		 */
+		for (i = 0; i < NEU1; i++) {
+			for (n = 0; n < NEU2; n++) {
+#ifdef MNIST
+				out2[n] += out1[i] * w2[n][i];
+#else
+				out2[n] += out1[i] * config_neu2[n][i];
+#endif
+			}
+		}
+		/*
+		 * Apply second layer constants.
+		 */
+		for (n = 0; n < NEU2; n++) {
+			out2[n] = cut(out2[n]);
+#ifdef MNIST
+			out2[n] += b2[n];
+#endif
+			out2[n] = cut(out2[n]);
+			result_soft[image][n] = out2[n];
+		}
+#ifdef MNIST
+		/*
+		 * Compute the maximum value for the second layer
+		 */
+		for (i = 0; i < NEU2; i++) {
+			if (out2[i] > out2[max]) {
+				max = i;
+			}
+		}
+#endif
+		soft_time = XTime_DiffCurrReal_Double(&oldtime);
+#ifdef MNIST
+		/*
+		 * Compute success rate
+		 */
+		if (max == labels[image]) {
+			success++;
+		}
+
+#endif
+	}
+#ifdef MNIST
+	printf("soft success rate: %.2f%%\n", (success / (float)FRAMES_NB) * 100);
+#endif
 }
+
+/*
+ * Cut and keep only the 32 low-order bits from in.
+ * Keep signed bits for 32 high-order bits.
+ */
+int64_t cut(int64_t in)
+{
+	bool negative;
+
+	negative = (in < 0) ? true : false;
+	if (negative)
+		in = -in;
+	in &= 0xFFFFFFFF;
+	if (negative)
+		in = -in;
+
+	return in;
+}
+

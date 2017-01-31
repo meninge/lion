@@ -1,19 +1,29 @@
 
+#define MNIST
+
+
+#ifndef MNIST
 // Simple configuration
 
 #define FRAMES_NB 2
 #define FSIZE     64
 #define NEU1      4
 #define NEU2      3
+#define ROWS 8
+#define COLUMNS 8
 
-/*
+#else
 // Dimensions for MNIST application
-#define FRAMES_NB 2
+#define FRAMES_NB 1000
 #define FSIZE     784
 #define NEU1      100
 #define NEU2      10
-*/
+#define ROWS 28
+#define COLUMNS 28
+#endif
 
+
+#ifndef MNIST
 // Config for neurons, layer 1
 const uint32_t config_neu1[NEU1][FSIZE] = {
 	{1, -50, 10541, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -20},
@@ -173,3 +183,4 @@ const uint32_t data_frames[FRAMES_NB][FSIZE] = {
 	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -100}
 };
 */
+#endif

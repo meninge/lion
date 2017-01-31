@@ -21,7 +21,7 @@
 #include "main.h"
 #include "neuralnetwork.h"
 #include "accregs.h"
-
+#include "demo.h"
 
 
 double XTime_ToDouble(XTime *t) {
@@ -48,6 +48,8 @@ void* malloc_with_loc(unsigned size, char* file, unsigned line) {
 
 
 int main() {
+	int image, neuron;
+
 	init_platform();
 
 	print("Hello World\n");
@@ -63,12 +65,31 @@ int main() {
 	// Disable interrupts
 	XUartPs_WriteReg(XPAR_PS7_UART_1_BASEADDR, XUARTPS_IDR_OFFSET, XUARTPS_IXR_MASK);
 
+#ifdef DEMO
+	start_demo();
+#else
 	// Launch main computing
 	nn_process_config();
 	nn_process_frames();
 
+#endif
 	// Launch computing on software only
 	nn_soft();
+	for (image = 0; image < FRAMES_NB; image++) {
+		for (neuron = 0; neuron < NEU2; neuron++) {
+			if (result_soft[image][neuron] != result_hard[image][neuron]) {
+				printf("WARNING: difference soft/hard\n");
+				printf("soft: image°%d, neurone n°%d : %d\n", image, neuron,
+						result_soft[image][neuron]);
+				printf("hard: image°%d, neurone n°%d : %d\n", image, neuron,
+						result_hard[image][neuron]);
+			}
+		}
+	}
+	printf("%u frames\n:", FRAMES_NB);
+	printf("hardware: %g seconds => %g frames/s\n", hard_time, FRAMES_NB/hard_time);
+	printf("software: %g seconds => %g frames/s\n", soft_time, FRAMES_NB/soft_time);
+	printf("speedup is %g\n", soft_time / hard_time);
 
 	print("Finished - Entering infinite loop\n");
 	while(1);

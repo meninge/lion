@@ -1,3 +1,6 @@
+#ifndef MAIN_H_
+#define MAIN_H_
+
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -36,3 +39,4 @@ double XTime_DiffCurrReal_Double(XTime *oldtime);
 void* malloc_with_loc(unsigned size, char* file, unsigned line);
 
 
+#endif

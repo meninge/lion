@@ -2,17 +2,27 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "dataset.h"
+
 
 void nn_process_clear();
 
 void nn_process_config();
 void nn_process_frames();
+void nn_process_frames_for_demo(int32_t* digit);
+
 
 void nn_soft(void);
+int64_t cut(int64_t in);
 
-// To be used for MNIST application
-#define ROWS 28
-#define COLUMNS 28
+/*
+ * Results per frame per neuron
+ */
+extern int32_t result_hard[FRAMES_NB][NEU2];
+extern int32_t result_soft[FRAMES_NB][NEU2];
+extern double hard_time;
+extern double soft_time;
+
 /*
  * Extern declarations of weights and constants.
  */
