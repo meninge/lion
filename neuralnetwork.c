@@ -24,7 +24,7 @@
 //#define POP_RD
 //#define POP_1R
 //#define POP_R2
-#define MNIST
+//#define MNIST
 
 void nn_process_clear() {
 	// Reset the accelerator
@@ -81,7 +81,7 @@ void nn_process_config() {
 	printf("config_buffer_2 = 0x%p\n", config_buffer_2);
 	printf("config_buffer_rec = 0x%p\n", config_buffer_rec);
 
-	// w1 contains given weights for level 1
+	// w1 contaiVivado Simulator kernel has discovered an exceptional condition from which it cannot recoverns given weights for level 1
 	printf("config_buffer_1:\n");
 #endif
 
@@ -120,11 +120,11 @@ void nn_process_config() {
 	printf("config_buffer_rec:\n");
 #endif
 	for (i = 0; i < accreg_lvl1_nbneu; i++) {
-		config_buffer_rec[i] = config_recode[i];
-		/*
-		 * MNIST application
-		 */
+#ifdef MNIST
 		config_buffer_rec[i] = b1[i];
+#else
+		config_buffer_rec[i] = config_recode[i];
+#endif
 #ifdef PRINT_DEBUG
 		printf("poids recode: %d: %ld\n", i, (long)config_buffer_rec[i]);
 #endif
@@ -137,7 +137,9 @@ void nn_process_config() {
 	
 	nn_process_clear();
 
+#ifdef PRINT_DEBUG
 	accregs_print_fifo_counts();
+#endif
 
 	print("Send config for recode level\n");
 	// Write config for recode level
@@ -145,6 +147,14 @@ void nn_process_config() {
 	accreg_wr(10, (uint32_t)config_buffer_rec);
 	// 1 burst is 16 ;
 	accreg_wr(12, MINIMUM_BURSTS(accreg_lvl1_nbneu));
+
+	while(accreg_check_busyr());
+	free(config_buffer_rec_alloc);
+
+#ifdef PRINT_DEBUG
+	accregs_print_fifo_counts();
+	sleep(1);
+#endif
 
 #ifdef POP_RD
 	for (i = 0; i < NEU1; i++) {
@@ -160,12 +170,6 @@ void nn_process_config() {
 	printf("FINI\n");
 #endif
 
-	while(accreg_check_busyr());
-	free(config_buffer_rec_alloc);
-	accregs_print_fifo_counts();
-
-	//sleep(1);
-
 	print("Send config for level 1\n");
 	nn_process_clear();
 	// Write config for level 1
@@ -173,8 +177,16 @@ void nn_process_config() {
 	accreg_wr(10, (uint32_t)config_buffer_1);
 	// 1 burst is 16 * 4 bytes.
 	accreg_wr(12, MINIMUM_BURSTS(accreg_lvl1_nbneu * FSIZE));
-	// recupération des poids dans la fifo rdbuf
+
+#ifdef PRINT_DEBUG
+	accregs_print_fifo_counts();
+#endif
+
+	while(accreg_check_busyr());
+	free(config_buffer_1_alloc);
+
 #ifdef POP_RD
+	// recupération des poids dans la fifo rdbuf
 	for (i = 0; i < NEU1 * FSIZE; i++) {
 		if (i%FSIZE == 0) {
 			printf("NEU N°%d: \n", i/FSIZE);
@@ -191,10 +203,6 @@ void nn_process_config() {
 	}
 	printf("FINI\n");
 #endif
-
-	accregs_print_fifo_counts();
-	while(accreg_check_busyr());
-	free(config_buffer_1_alloc);
 
 	//sleep(5);
 
@@ -225,9 +233,10 @@ void nn_process_config() {
 	
 	while(accreg_check_busyr());
 	free(config_buffer_2_alloc);
+#ifdef PRINT_DEBUG
 	accregs_print_fifo_counts();
-
-	//sleep(5);
+	sleep(1);
+#endif
 
 	printf("FIN de config\n");
 
@@ -333,9 +342,11 @@ void nn_process_frames() {
 
 #ifdef PRINT_DEBUG
 	accregs_print_fifo_counts();
-	sleep(5);
+	while(accreg_check_busyr());
+	while(accreg_check_busyw());
+	sleep(1);
 	accregs_print_fifo_counts();
-	#endif
+#endif
 
 #ifdef POP_1R
 	for (i = 0; i < NEU1 * FRAMES_NB; i++) {
@@ -398,6 +409,15 @@ void nn_process_frames() {
 	for (i = 0; i < FRAMES_NB * NEU2; i++) {
 		printf("RES FRAME N°%d, res n°%d: %ld\n", i/NEU2, i%NEU2, (long)out_buffer[i]);
 #ifdef MNIST
+		/*
+		 * Ajout de la constante après le calcul d'accumulation
+		 * du deuxième niveau.
+		 * Ceci devrait être fait de manière matérielle,
+		 * de même que le calcul du maximum afin que le réseau de
+		 * neurones sorte directement pour chaque frame la
+		 * classification.
+		 */
+		out_buffer[i] += b2[i % NEU2];
 		if (out_buffer[i] > max[i / NEU2]) {
 			max[i / NEU2] = out_buffer[i];
 			digit[i / NEU2] = i % NEU2;
@@ -417,4 +437,8 @@ void nn_process_frames() {
 
 	free(frames_buffer_alloc);
 	free(out_buffer_alloc);
+}
+
+void nn_soft(void)
+{
 }

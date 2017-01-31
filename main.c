@@ -67,6 +67,9 @@ int main() {
 	nn_process_config();
 	nn_process_frames();
 
+	// Launch computing on software only
+	nn_soft();
+
 	print("Finished - Entering infinite loop\n");
 	while(1);
 

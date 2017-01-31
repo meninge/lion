@@ -8,6 +8,8 @@ void nn_process_clear();
 void nn_process_config();
 void nn_process_frames();
 
+void nn_soft(void);
+
 // To be used for MNIST application
 #define ROWS 28
 #define COLUMNS 28
