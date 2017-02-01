@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -18,301 +17,164 @@
 #include "neuralnetwork.h"
 #include "accregs.h"
 
-//#define PRINT_DEBUG
-//#define PRINT_RES
-//#define POP_RD
-//#define POP_1R
-//#define POP_R2
-#define MNIST
-
-int32_t result_hard[FRAMES_NB][NEU2];
-int32_t result_soft[FRAMES_NB][NEU2];
 double hard_time = 0;
 double soft_time = 0;
 
-void nn_process_clear() {
+/*
+ * Compute the results with the IP
+ * WARNING: arrays sizes must match the following:
+ *	- frames: uint8_t[FRAMES_NB][FSIZE]
+ *	- results: uint32_t[FRAMES_NB][NEU2]
+ *	- weights_level1: int32_t[NEU1][FSIZE]
+ *	- weights_level2: int32_t[NEU2][NEU1]
+ *	- constants_recode_level1: int32_t[NEU1]
+ *	- constants_recode_level2: int32_t[NEU2]
+ */
+void nn_hardware(uint8_t **frames, uint32_t **results,
+		int32_t **weights_level1,
+		int32_t **weights_level2,
+		int32_t *constants_recode_level1,
+		int32_t *constants_recode_level2)
+{
+	nn_process_config(weights_level1, weights_level2,
+			constants_recode_level1);
+	nn_process_frames(frames, results, constants_recode_level2);
+}
+
+/*
+ * Compute the results only with the software, without using the IP.
+ * We use this as a reference.
+ * WARNING: arrays sizes must match the following:
+ *	- frames: uint8_t[FRAMES_NB][FSIZE]
+ *	- results: uint32_t[FRAMES_NB][NEU2]
+ *	- weights_level1: int32_t[NEU1][FSIZE]
+ *	- weights_level2: int32_t[NEU2][NEU1]
+ *	- constants_recode_level1: int32_t[NEU1]
+ *	- constants_recode_level2: int32_t[NEU2]
+ */
+void nn_software(uint8_t **frames, uint32_t **results,
+		int32_t **weights_level1,
+		int32_t **weights_level2,
+		int32_t *constants_recode_level1,
+		int32_t *constants_recode_level2)
+{
+	int64_t out1[NEU1] = {0};
+	int64_t out2[NEU2] = {0};
+	int32_t i, n, image;
+	XTime oldtime;
+
+	XTime_GetTime(&oldtime);
+	for (image = 0; image < FRAMES_NB; image++) {
+		/*
+		 * Initialization
+		 */
+		for (n = 0; n < NEU1; n++) {
+			out1[n] = 0;
+		}
+		for (n = 0; n < NEU2; n++) {
+			out2[n] = 0;
+		}
+		/*
+		 * First layer computation
+		 */
+		for (i = 0; i < FSIZE; i++) {
+			for (n = 0; n < NEU1; n++) {
+				out1[n] +=
+					frames[image][i] * weights_level1[n][i];
+			}
+		}
+		/*
+		 * Cut to 32 bits values and apply activation function
+		 */
+		for (n = 0; n < NEU1; n++) {
+			out1[n] = cut(out1[n]);
+			out1[n] += constants_recode_level1[n];
+			out1[n] = (out1[n] > 0) ? out1[n] : 0;
+			out1[n] = cut(out1[n]);
+		}
+		/*
+		 * Second layer computation
+		 */
+		for (i = 0; i < NEU1; i++) {
+			for (n = 0; n < NEU2; n++) {
+				out2[n] += out1[i] * weights_level2[n][i];
+			}
+		}
+		/*
+		 * Apply second layer constants.
+		 */
+		for (n = 0; n < NEU2; n++) {
+			out2[n] = cut(out2[n]);
+			out2[n] += constants_recode_level2[n];
+			out2[n] = (out2[n] > 0) ? out2[n] : 0;
+			out2[n] = cut(out2[n]);
+			results[image][n] = out2[n];
+		}
+	}
+	soft_time = XTime_DiffCurrReal_Double(&oldtime);
+}
+
+/*
+ * Send RESET signal to the IP.
+ */
+void nn_process_clear()
+{
 	// Reset the accelerator
 	accreg_clear();
 	while(accreg_check_clear());
-	// Get config
-	//accreg_config_get();
-	// Set dimensions
-	accreg_lvl1_fsize = FSIZE;
-	accreg_set_lvl1_fsize(FSIZE);
-	accreg_lvl1_nbneu = NEU1;
-	accreg_set_lvl1_nbneu(NEU1);
-	accreg_lvl2_nbneu = NEU2;
-	accreg_set_lvl2_nbneu(NEU2);
 }
 
-void nn_process_config() {
-	// Reset the accelerator
-	nn_process_clear();
-
-	printf("DEBUT de config\n");
-
-	int i = 0;
-	int j = 0;
-	int32_t *config_buffer_1_alloc = NULL, *config_buffer_1 = NULL;
-	int32_t *config_buffer_2_alloc = NULL, *config_buffer_2 = NULL;
-	int32_t *config_buffer_rec_alloc = NULL, *config_buffer_rec = NULL;
-	const unsigned bufsize_1 = accreg_lvl1_nbneu * FSIZE * sizeof(*config_buffer_1) + 16 * 4;
-	const unsigned bufsize_2 = accreg_lvl2_nbneu * accreg_lvl1_nbneu * sizeof(*config_buffer_2) + 16 * 4;
-	const unsigned bufsize_rec = accreg_lvl1_nbneu * sizeof(*config_buffer_rec) + 16 * 4;
-
-	// On alloue bufsize sur une adresse multiple de 16 * 4 octets.
-	// On rajoute 16 * 4 pour pouvoir réaligner ensuite sans perdre de données.
-	printf("bufsize_1 = %u\n", bufsize_1);
-	printf("bufsize_2 = %u\n", bufsize_2);
-	printf("bufsize_rec = %u\n", bufsize_rec);
-
-	// Données MNIST de taille phénoménale, gigantesque, ces malloc vont-ils passer ?
-	config_buffer_1_alloc = malloc_check(bufsize_1);
-	config_buffer_2_alloc = malloc_check(bufsize_2);
-	config_buffer_rec_alloc = malloc_check(bufsize_rec);
-
-	printf("config_buffer_1_alloc = 0x%p\n", config_buffer_1_alloc);
-	printf("config_buffer_2_alloc = 0x%p\n", config_buffer_2_alloc);
-	printf("config_buffer_rec_alloc = 0x%p\n", config_buffer_rec_alloc);
-
-	// Aller à la prochaine frontière des multiples de 16 * 4 octets.
-	config_buffer_1 = (void *)uint_roundup((long)config_buffer_1_alloc, 16 * 4);
-	config_buffer_2 = (void *)uint_roundup((long)config_buffer_2_alloc, 16 * 4);
-	config_buffer_rec = (void *)uint_roundup((long)config_buffer_rec_alloc, 16 * 4);
-
-#ifdef PRINT_DEBUG
-	printf("config_buffer_1 = 0x%p\n", config_buffer_1);
-	printf("config_buffer_2 = 0x%p\n", config_buffer_2);
-	printf("config_buffer_rec = 0x%p\n", config_buffer_rec);
-
-	// w1 contaiVivado Simulator kernel has discovered an exceptional condition from which it cannot recoverns given weights for level 1
-	printf("config_buffer_1:\n");
-#endif
-
-	for (j = 0; j < accreg_lvl1_nbneu; j++) {
-		for (i = 0; i < FSIZE; i++) {
-#ifdef MNIST
-			config_buffer_1[j * FSIZE + i] = w1[j][i / ROWS][i % COLUMNS];
-#else
-			config_buffer_1[j * FSIZE + i] = config_neu1[j][i];
-#endif
-#ifdef PRINT_DEBUG
-			printf("poids L1: %d: %ld\n", j * FSIZE + i, (long)config_buffer_1[ j * FSIZE + i]);
-#endif
-		}
-	}
-
-	// w2 contains given weights for level 2
-#ifdef PRINT_DEBUG
-	printf("config_buffer_2:\n");
-#endif
-
-	for (j = 0; j < accreg_lvl2_nbneu; j++) {
-		for (i = 0; i < accreg_lvl1_nbneu; i++) {
-#ifdef MNIST
-			config_buffer_2[j * accreg_lvl1_nbneu + i] = w2[j][i];
-#else
-			config_buffer_2[j * accreg_lvl1_nbneu + i] = config_neu2[j][i];
-#endif
-			#ifdef PRINT_DEBUG
-			printf("poids L2: %d: %ld\n", j * accreg_lvl1_nbneu + i, (long)config_buffer_2[ j * accreg_lvl1_nbneu + i]);
-			#endif
-		}
-	}
-	// b1 contains given weights for recode level
-#ifdef PRINT_DEBUG
-	printf("config_buffer_rec:\n");
-#endif
-	for (i = 0; i < accreg_lvl1_nbneu; i++) {
-#ifdef MNIST
-		config_buffer_rec[i] = b1[i];
-#else
-		config_buffer_rec[i] = config_recode[i];
-#endif
-#ifdef PRINT_DEBUG
-		printf("poids recode: %d: %ld\n", i, (long)config_buffer_rec[i]);
-#endif
-	}
-
-	// Flush cached data to DDR memory
-	Xil_DCacheFlush();
-
-	
-
-	nn_process_clear();
-
-#ifdef PRINT_DEBUG
-	sleep(1);
-	accregs_print_fifo_counts();
-#endif
-
-	print("Send config for recode level\n");
-	// Write config for recode level
-	accreg_set_wmode_rec12();
-	accreg_wr(10, (uint32_t)config_buffer_rec);
-	// 1 burst is 16 ;
-	accreg_wr(12, MINIMUM_BURSTS(accreg_lvl1_nbneu));
-
-	while(accreg_check_busyr());
-	free(config_buffer_rec_alloc);
-
-#ifdef PRINT_DEBUG
-	accregs_print_fifo_counts();
-	sleep(1);
-#endif
-
-#ifdef POP_RD
-	for (i = 0; i < NEU1; i++) {
-		// to get the fifo rdbuf out rdy
-		unsigned register15 = (unsigned)accreg_rd(15);
-		while (!(( 1 << 14) & register15)) {
-			accregs_print_fifo_counts();
-			usleep(10);
-			register15 = (unsigned)accreg_rd(15);
-		}
-		printf("fifo_rdbuf poids rec %d: %ld\n", i, (long int)accregs_pop_rd());
-	}
-	printf("FINI\n");
-#endif
-
-	print("Send config for level 1\n");
-	nn_process_clear();
-	// Write config for level 1
-	accreg_set_wmode_lvl1();
-	accreg_wr(10, (uint32_t)config_buffer_1);
-	// 1 burst is 16 * 4 bytes.
-	accreg_wr(12, MINIMUM_BURSTS(accreg_lvl1_nbneu * FSIZE));
-
-#ifdef PRINT_DEBUG
-	accregs_print_fifo_counts();
-#endif
-
-	while(accreg_check_busyr());
-	free(config_buffer_1_alloc);
-
-#ifdef POP_RD
-	// recupération des poids dans la fifo rdbuf
-	for (i = 0; i < NEU1 * FSIZE; i++) {
-		if (i%FSIZE == 0) {
-			printf("NEU N°%d: \n", i/FSIZE);
-			usleep(100);
-		}
-		// to get the fifo rdbuf out rdy
-		unsigned register15 = (unsigned)accreg_rd(15);
-		while (!(( 1 << 14) & register15)) {
-			accregs_print_fifo_counts();
-			usleep(10);
-			register15 = (unsigned)accreg_rd(15);
-		}
-		printf("fifo_rdbuf poids L1 %d: %ld\n", i%FSIZE, (long int)accregs_pop_rd());
-	}
-	printf("FINI\n");
-#endif
-
-	print("Send config for level 2\n");
-	nn_process_clear();
-	// Write config for level 2
-	accreg_set_wmode_lvl2();
-	accreg_wr(10, (uint32_t)config_buffer_2);
-	// 1 burst is 16 * 4 bytes.
-	accreg_wr(12, MINIMUM_BURSTS(accreg_lvl1_nbneu * accreg_lvl2_nbneu));
-#ifdef POP_RD
-	for (i = 0; i < NEU1 * NEU2; i++) {
-		if (i%NEU1 == 0) {
-			printf("NEU N°%d: \n", i/NEU1);
-			usleep(100);
-		}
-		// to get the fifo rdbuf out rdy
-		unsigned register15 = (unsigned)accreg_rd(15);
-		while (!(( 1 << 14) & register15)) {
-			accregs_print_fifo_counts();
-			usleep(10);
-			register15 = (unsigned)accreg_rd(15);
-		}
-		printf("fifo_rdbuf poids L2 %d: %ld\n", i%NEU1, (long int)accregs_pop_rd());
-	}
-	printf("FINI\n");
-#endif
-	
-	while(accreg_check_busyr());
-	free(config_buffer_2_alloc);
-
-#ifdef PRINT_DEBUG
-	accregs_print_fifo_counts();
-	sleep(1);
-#endif
-
-	printf("FIN de config\n");
-
-	// Reset the accelerator
-	nn_process_clear();
+/*
+ * Configure the whole network.
+ * WARNING: array sizes must match the following:
+ *	- weights_level1: int32_t[NEU1][FSIZE]
+ *	- weights_level2: int32_t[NEU2][NEU1]
+ *	- constants_recode_level1: int32_t[NEU1]
+ */
+void nn_process_config(int32_t **weights_level1, int32_t **weights_level2,
+		int32_t *constants_recode_level1)
+{
+	nn_config_level(weights_level1, LEVEL1);
+	nn_config_level(weights_level2, LEVEL2);
+	nn_config_level(constants_recode_level1, RECODE1);
 }
 
-void nn_process_frames() {
-	printf("DEBUT d'envoie des frames\n");
-
+/*
+ * Send the frames to the IP and get back the results.
+ * We need to pass the second layer recode constants to add them in the
+ * software as there is not hardware layer for that.
+ * WARNING: arrays sizes must match the following:
+ *	- frames: uint8_t[FRAMES_NB][FSIZE]
+ *	- results: uint32_t[FRAMES_NB][NEU2]
+ *	- constants_recode_level2: uint32_t[NEU2]
+ */
+void nn_process_frames(uint8_t **frames, uint32_t **results,
+		int32_t *constants_recode_level2)
+{
 	XTime oldtime;
 	int i, j;
-
-	// Reset the accelerator
-	nn_process_clear();
-
-	accregs_print_fifo_counts();
-
 	uint32_t* frames_buffer_alloc = NULL;
 	uint32_t* frames_buffer = NULL;
-
 	int32_t* out_buffer_alloc = NULL;
 	int32_t* out_buffer = NULL;
+	const unsigned frames_bufsize =
+		FRAMES_NB * FSIZE * sizeof(*frames_buffer) +
+		16 * 4;
+	const unsigned out_bufsize = FRAMES_NB * NEU2 * sizeof(*out_buffer) +
+		16 * 4;
 
-#ifdef MNIST
-	int32_t max[FRAMES_NB] = {-100000};
-	int32_t digit[FRAMES_NB] = {-1};
-	uint32_t success_hits = 0;
-#endif
-
-	const unsigned frames_bufsize = FRAMES_NB * FSIZE * sizeof(*frames_buffer) + 16 * 4;
+	nn_process_clear();
 	frames_buffer_alloc = malloc_check(frames_bufsize);
-	printf("frames_buffer_alloc = 0x%p\n", frames_buffer_alloc);
-	frames_buffer = (void*)uint_roundup((long)frames_buffer_alloc, 16 * 4);
-	printf("frames_buffer = 0x%p\n", frames_buffer);
-
-	const unsigned out_bufsize = FRAMES_NB * NEU2 * sizeof(*out_buffer) + 16 * 4;
 	out_buffer_alloc = malloc_check(out_bufsize);
-	printf("out_buffer_alloc = 0x%p\n", out_buffer_alloc);
+	frames_buffer = (void*)uint_roundup((long)frames_buffer_alloc, 16 * 4);
 	out_buffer = (void*)uint_roundup((long)out_buffer_alloc, 16 * 4);
-	printf("out_buffer = 0x%p\n", out_buffer);
-
-#ifdef PRINT_DEBUG
-	printf("frames_buffer:\n");
-#endif
 	for (j = 0; j < FRAMES_NB; j++) {
 		for (i = 0; i < FSIZE; i++) {
-#ifdef MNIST
-			frames_buffer[j * FSIZE + i] = frames[j][i];
-#else
-			frames_buffer[j * FSIZE + i] = data_frames[j][i];
-#endif
-			#ifdef PRINT_DEBUG
-			printf("frame %d pix %d: %lu\n", j, i, (unsigned long)frames_buffer[j * FSIZE + i]);
-			#endif
+			frames_buffer[j * FSIZE + i] = ((uint8_t *)frames)[j * FSIZE + i];
 		}
 	}
-
-#ifdef PRINT_DEBUG
-	printf("out_buffer before bursts:\n");
-#endif
-	for (i = 0; i < FRAMES_NB * NEU2; i++) {
-		out_buffer[i] = 42;
-#ifdef PRINT_DEBUG
-		printf("outbuf before burst: %d: %ld\n", i, (long)out_buffer[i]);
-#endif
-	}
-
-
 	// Flush cached data to DDR memory
 	Xil_DCacheFlush();
-
 	XTime_GetTime(&oldtime);
 
 	// Set the number of results to get
@@ -327,216 +189,30 @@ void nn_process_frames() {
 	accreg_wr(11, (long)out_buffer);
 	accreg_wr(13, MINIMUM_BURSTS(FRAMES_NB * NEU2));
 
-#ifdef POP_RD
-	for (i = 0; i < FRAMES_NB * FSIZE; i++) {
-		// to get the fifo rdbuf out rdy
-		unsigned register15 = (unsigned)accreg_rd(15);
-		while (!(( 1 << 14) & register15)) {
-			accregs_print_fifo_counts();
-			usleep(10);
-			register15 = (unsigned)accreg_rd(15);
-		}
-		printf("fifo_rdbuf frame %d: %ld\n", i, (long int)accregs_pop_rd());
-	}
-	printf("FINI\n");
-#endif
-
-#ifdef PRINT_DEBUG
-	accregs_print_fifo_counts();
 	while(accreg_check_busyr());
 	while(accreg_check_busyw());
-	sleep(1);
-	accregs_print_fifo_counts();
-#endif
-
-#ifdef POP_1R
-	for (i = 0; i < NEU1 * FRAMES_NB; i++) {
-		if (i%NEU1 == 0) {
-			printf("FRAME N°%d: \n", i/NEU1);
-			usleep(100);
-		}
-		// to get the fifo 1r out rdy
-		unsigned register15 = (unsigned)accreg_rd(15);
-		while (!(( 1 << 18) & register15)) {
-			accregs_print_fifo_counts();
-			usleep(10);
-			register15 = (unsigned)accreg_rd(15);
-		}
-		printf("fifo_1r %d: %ld\n", i%NEU1, (long int)accregs_pop_1r());
-	}
-#endif 
-#ifdef POP_R2
-	for (i = 0; i < NEU1 * FRAMES_NB; i++) {
-		if (i%NEU1 == 0) {
-			printf("FRAME N°%d: \n", i/NEU1);
-			usleep(100);
-		}
-		// to get the fifo 1r out rdy
-		unsigned register15 = (unsigned)accreg_rd(15);
-		while (!(( 1 << 22) & register15)) {
-			accregs_print_fifo_counts();
-			usleep(10);
-			register15 = (unsigned)accreg_rd(15);
-		}
-		printf("fifo_r2 %d: %ld\n", i%NEU1, (long int)accregs_pop_r2());
-	}
-#endif 
-#ifdef PRINT_DEBUG
-	accregs_print_fifo_counts();
-	accreg_print_regs();
-#endif
-
-	while(accreg_check_busyr());
-	while(accreg_check_busyw());
-
-#ifdef PRINT_DEBUG
-	accregs_print_fifo_counts();
-#endif
-
-
-	// Reset the accelerator
-	nn_process_clear();
-
 
 	// Force the cache to get data from DDR
 	Xil_DCacheInvalidateRange((unsigned)out_buffer, out_bufsize);
 
+	/*
+	 * This is not done in the IP so we do it in the software.
+	 */
 	for (i = 0; i < FRAMES_NB * NEU2; i++) {
-#ifdef PRINT_RES
-		printf("RES FRAME N°%d, res n°%d: %ld\n", i/NEU2, i%NEU2, (long)out_buffer[i]);
-#endif
-#ifdef MNIST
-		/*
-		 * Ajout de la constante après le calcul d'accumulation
-		 * du deuxième niveau.
-		 * Ceci devrait être fait de manière matérielle,
-		 * de même que le calcul du maximum afin que le réseau de
-		 * neurones sorte directement pour chaque frame la
-		 * classification.
-		 */
-		out_buffer[i] += b2[i % NEU2];
-		if (out_buffer[i] > max[i / NEU2]) {
-			max[i / NEU2] = out_buffer[i];
-			digit[i / NEU2] = i % NEU2;
-		}
-		result_hard[i / NEU2][i % NEU2] = out_buffer[i];
-#endif
+		out_buffer[i] += constants_recode_level2[i % NEU2];
+		out_buffer[i] = (out_buffer[i] > 0) ? out_buffer[i] : 0;
 	}
 	hard_time = XTime_DiffCurrReal_Double(&oldtime);
-#ifdef MNIST
-	for (i = 0; i < FRAMES_NB; i++) {
-		if (digit[i] == labels[i]) {
-			success_hits++;
+
+	for (j = 0; j < FRAMES_NB; j++) {
+		for (i = 0; i < NEU2; i++) {
+			results[j][i] = out_buffer[j * NEU2 + i];
 		}
 	}
-	printf("hard, taux de réussite : %.2f%%\n", (success_hits / (float)FRAMES_NB) * 100);
-#endif
-
-	printf("FIN d'envoi des frames\n");
 
 	free(frames_buffer_alloc);
 	free(out_buffer_alloc);
-}
-
-void nn_soft(void)
-{
-	int64_t out1[NEU1] = {0};
-	int64_t out2[NEU2] = {0};
-	int32_t i, j, n, image;
-	int32_t max = 0;
-	int32_t success = 0;
-	XTime oldtime;
-
-	XTime_GetTime(&oldtime);
-	for (image = 0; image < FRAMES_NB; image++) {
-		/*
-		 * Initialization
-		 */
-		for (n = 0; n < NEU1; n++) {
-			out1[n] = 0;
-		}
-		for (n = 0; n < NEU2; n++) {
-			out2[n] = 0;
-		}
-		max = 0;
-		/*
-		 * First layer computation
-		 */
-		for (i = 0; i < ROWS; i++) {
-			for (j = 0; j < COLUMNS; j++) {
-				for (n = 0; n < NEU1; n++) {
-#ifdef MNIST
-					out1[n] += frames[image][i * ROWS + j]
-						* w1[n][i][j];
-#else
-					out1[n] += data_frames[image][i * ROWS + j]
-						* config_neu1[n][i * ROWS + j];
-#endif
-				}
-			}
-		}
-		/*
-		 * Cut to 32 bits values and apply activation function
-		 */
-		for (n = 0; n < NEU1; n++) {
-			out1[n] = cut(out1[n]);
-#ifdef MNIST
-			out1[n] += b1[n];
-#else
-			out1[n] += config_recode[n];
-#endif
-			out1[n] = (out1[n] > 0) ? out1[n] : 0;
-
-			out1[n] = cut(out1[n]);
-		}
-
-		/*
-		 * Second layer computation
-		 */
-		for (i = 0; i < NEU1; i++) {
-			for (n = 0; n < NEU2; n++) {
-#ifdef MNIST
-				out2[n] += out1[i] * w2[n][i];
-#else
-				out2[n] += out1[i] * config_neu2[n][i];
-#endif
-			}
-		}
-		/*
-		 * Apply second layer constants.
-		 */
-		for (n = 0; n < NEU2; n++) {
-			out2[n] = cut(out2[n]);
-#ifdef MNIST
-			out2[n] += b2[n];
-#endif
-			out2[n] = cut(out2[n]);
-			result_soft[image][n] = out2[n];
-		}
-#ifdef MNIST
-		/*
-		 * Compute the maximum value for the second layer
-		 */
-		for (i = 0; i < NEU2; i++) {
-			if (out2[i] > out2[max]) {
-				max = i;
-			}
-		}
-#endif
-		soft_time = XTime_DiffCurrReal_Double(&oldtime);
-#ifdef MNIST
-		/*
-		 * Compute success rate
-		 */
-		if (max == labels[image]) {
-			success++;
-		}
-
-#endif
-	}
-#ifdef MNIST
-	printf("soft success rate: %.2f%%\n", (success / (float)FRAMES_NB) * 100);
-#endif
+	nn_process_clear();
 }
 
 /*
@@ -557,3 +233,115 @@ int64_t cut(int64_t in)
 	return in;
 }
 
+/*
+ * Configure the given level.
+ * level argument must be LEVEL1, LEVEL2 or RECODE1.
+ * Possible types of weights argument:
+ *   - LEVEL1: int16_t[NEU1][FSIZE]
+ *   - LEVEL2: int16_t[NEU2][NEU1]
+ *   - RECODE1: int16_t[NEU1]
+ */
+void nn_config_level(void *weights, enum level level)
+{
+	int i, j;
+	int32_t *config_buffer_alloc = NULL, *config_buffer = NULL;
+	size_t bufsize;
+
+	// On rajoute 16 * 4 pour pouvoir réaligner ensuite sans perdre de
+	// données.
+	switch (level) {
+	case LEVEL1:
+		bufsize = NEU1 * FSIZE * sizeof(int32_t) + 16 * 4;
+		break;
+	case LEVEL2:
+		bufsize = NEU2 * NEU1 * sizeof(int32_t) + 16 * 4;
+		break;
+	case RECODE1:
+		bufsize = NEU1 * sizeof(int32_t) + 16 * 4;
+		break;
+	default:
+		abort_printf("configuring an undefined level\n");
+		break;
+	}
+	nn_process_clear();
+	config_buffer_alloc = malloc_check(bufsize);
+	/*
+	 * On réaligne la zone mémoire allouée sur une frontière de 16 * 4
+	 * octets avant de la remplir pour la préparer aux bursts.
+	 */
+	config_buffer = (void *)uint_roundup((long)config_buffer_alloc, 16 * 4);
+
+	switch (level) {
+	case LEVEL1:
+		for (j = 0; j < NEU1; j++) {
+			for (i = 0; i < FSIZE; i++) {
+				config_buffer[j * FSIZE + i] =
+					((int16_t *)weights)[j * FSIZE + i];
+			}
+		}
+		break;
+	case LEVEL2:
+		for (j = 0; j < NEU2; j++) {
+			for (i = 0; i < NEU1; i++) {
+				config_buffer[j * NEU1 + i] =
+					((int16_t *)weights)[j * FSIZE + i];
+			}
+		}
+		break;
+	case RECODE1:
+		for (i = 0; i < NEU1; i++) {
+			config_buffer[i] = ((int16_t *)weights)[i];
+		}
+		break;
+	default:
+		abort_printf("configuring an undefined level\n");
+		break;
+	}
+	Xil_DCacheFlush();
+	nn_process_clear();
+	accreg_wr(10, (uint32_t)config_buffer);
+	/*
+	 * L'écriture dans le registre 12 déclenche le burst.
+	 */
+	switch (level) {
+	case LEVEL1:
+		accreg_set_wmode_lvl1();
+		accreg_wr(12, MINIMUM_BURSTS(NEU1 * FSIZE));
+		break;
+	case LEVEL2:
+		accreg_set_wmode_lvl2();
+		accreg_wr(12, MINIMUM_BURSTS(NEU1 * NEU2));
+		break;
+	case RECODE1:
+		accreg_set_wmode_rec12();
+		accreg_wr(12, MINIMUM_BURSTS(NEU1));
+		break;
+	default:
+		abort_printf("configuring an undefined level\n");
+		break;
+	}
+	while(accreg_check_busyr());
+	free(config_buffer_alloc);
+	nn_process_clear();
+}
+
+/*
+ * Classify the given results ie,or each frame computes the selected neuron.
+ * WARNING: arrays sizes must match the following:
+ *	- results: uint32_t[FRAMES_NB][NEU2]
+ *	- classification: uint32_t[FRAMES_NB]
+ */
+void classify(uint32_t **results, uint32_t *classification)
+{
+	int i, j;
+	uint32_t max[FRAMES_NB] = {-1};
+
+	for (i = 0; i < FRAMES_NB; i++) {
+		for (j = 0; j < NEU2; j++) {
+			if (results[i][j] > max[i]) {
+				max[i] = results[i][j];
+				classification[i] = j;
+			}
+		}
+	}
+}

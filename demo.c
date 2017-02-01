@@ -8,7 +8,7 @@ void start_demo()
 	int frame = 0;
 	int32_t digit[FRAMES_NB_DEMO] = {-1};
 
-	nn_process_config();
+	//nn_process_config();
 	nn_process_frames_for_demo(digit);
 
 	for (frame = 0; frame < FRAMES_NB_DEMO; frame++) {
@@ -118,7 +118,7 @@ void nn_process_frames_for_demo(int32_t* digit) {
 
 
 	for (i = 0; i < FRAMES_NB_DEMO * NEU2; i++) {
-		result_hard[i / NEU2][i % NEU2] = out_buffer[i];
+		//result_hard[i / NEU2][i % NEU2] = out_buffer[i];
 
 		out_buffer[i] += b2[i % NEU2];
 		if (out_buffer[i] > max[i / NEU2]) {

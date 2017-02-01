@@ -1,38 +1,49 @@
+#ifndef _NEURAL_NETWORK_H_
+#define _NEURAL_NETWORK_H_
 
 #include <stdint.h>
 #include <stdbool.h>
 
 #include "dataset.h"
 
-
 void nn_process_clear();
 
-void nn_process_config();
-void nn_process_frames();
+void nn_process_config(int32_t **weights_level1, int32_t **weights_level2,
+		int32_t *constants_recode);
+
+void nn_process_frames(uint8_t **frames, uint32_t **results,
+		int32_t *constants_recode_level2);
 void nn_process_frames_for_demo(int32_t* digit);
 
+void nn_hardware(uint8_t **frames, uint32_t **results,
+		int32_t **weights_level1,
+		int32_t **weights_level2,
+		int32_t *constants_recode_level1,
+		int32_t *constants_recode_level2);
 
-void nn_soft(void);
+void nn_software(uint8_t **frames, uint32_t **results,
+		int32_t **weights_level1,
+		int32_t **weights_level2,
+		int32_t *constants_recode_level1,
+		int32_t *constants_recode_level2);
+
 int64_t cut(int64_t in);
+void classify(uint32_t **results, uint32_t *classification);
 
 /*
- * Results per frame per neuron
+ * Timings
  */
-extern int32_t result_hard[FRAMES_NB][NEU2];
-extern int32_t result_soft[FRAMES_NB][NEU2];
 extern double hard_time;
 extern double soft_time;
 
-/*
- * Extern declarations of weights and constants.
- */
-extern int16_t w1[100][28][28];
-extern int16_t w2[10][100];
-extern int16_t b1[100];
-extern int16_t b2[10];
+enum level {
+	LEVEL1,
+	RECODE1,
+	LEVEL2,
+	RECODE2,
+	LEVEL_NUMBER
+};
 
-/*
- * Extern declarations of frames and labels.
- */
-extern uint8_t frames[1000][784];
-extern uint8_t labels[1000];
+void nn_config_level(void *weights, enum level level);
+
+#endif /* _NEURAL_NETWORK_H_ */
