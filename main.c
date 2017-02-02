@@ -119,8 +119,7 @@ int main()
 	 * Compute hardware and software succes rates.
 	 */
 	for (image = 0; image < FRAMES_NB; image++) {
-		// A décommenter pour la démo n°2
-		//display(classification_hard[image]);
+		display(classification_hard[image]);
 		if (classification_hard[image] == labels[image]) {
 			success_hits_hard++;
 		}
