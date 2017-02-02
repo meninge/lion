@@ -44,3 +44,14 @@ void accregs_print_fifo_counts()
 	printf("FIFO 2o count : %u\n", (register14 & 0x00FF0000) >> 16);
 	printf("FIFO wr count : %u\n", (register15 & 0x000000FF) >> 0);
 }
+
+/*
+ * DEBUG
+ * Pop the value from one of the FIFO. The according unused register, 8 here,
+ * has to be granted this functionality in the hardware for the corresponding
+ * FIFO to be poped after a read in this register.
+ */
+int32_t accregs_pop()
+{
+	return (int32_t)accreg_rd(8);
+}

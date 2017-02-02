@@ -59,5 +59,6 @@ static inline void accreg_wr(unsigned reg, uint32_t v)
 
 void accreg_print_regs();
 void accregs_print_fifo_counts();
+int32_t accregs_pop();
 
 #endif /* _ACCREGS_H_*/
