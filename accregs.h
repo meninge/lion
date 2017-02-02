@@ -43,7 +43,8 @@
 /*
  * Send size of the 32 bits array and returns the needed number of bursts.
  */
-#define MINIMUM_BURSTS(n) (((n) + 15) / 16)
+//#define MINIMUM_BURSTS(n) (((n) + 15) / 16)
+#define MINIMUM_BURSTS(n) ((((n) % 16 == 0) ? (n) : ((n) + 16)) / 16)
 
 extern volatile unsigned* accregs_ptr;
 

@@ -22,7 +22,7 @@
 #define NEU2      3
 
 // Weights for neurons layer 1
-const int32_t config_neu1[NEU1][FSIZE] = {
+const int16_t config_neu1[NEU1][FSIZE] = {
 	{1, -50, 10541, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -20},
 	{2, 50, -1152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -444},
 	{3, 514, 453, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 666},
@@ -30,17 +30,17 @@ const int32_t config_neu1[NEU1][FSIZE] = {
 };
 
 // Constants for recode after layer 1
-const int32_t config_recode1[NEU1] = {1, 2, 3, 4};
+const int16_t config_recode1[NEU1] = {1, 2, 3, 4};
 
 // Weights for neurons layer 2
-const int32_t config_neu2[NEU2][NEU1] = {
+const int16_t config_neu2[NEU2][NEU1] = {
 	{ 3, 1, 1, 1},
 	{ 2, 1, 1, 1},
 	{ 1, 1, 1, 1}
 };
 
 // Constants for recode after layer 2
-const int32_t config_recode2[NEU2] = {0, 0, 0};
+const int16_t config_recode2[NEU2] = {0, 0, 0};
 
 // Frames to send
 const uint8_t data_frames[FRAMES_NB][FSIZE] = {

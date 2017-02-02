@@ -25,16 +25,17 @@ double soft_time = 0;
  * WARNING: arrays sizes must match the following:
  *	- frames: uint8_t[FRAMES_NB][FSIZE]
  *	- results: uint32_t[FRAMES_NB][NEU2]
- *	- weights_level1: int32_t[NEU1][FSIZE]
- *	- weights_level2: int32_t[NEU2][NEU1]
- *	- constants_recode_level1: int32_t[NEU1]
- *	- constants_recode_level2: int32_t[NEU2]
+ *	- weights_level1: int16_t[NEU1][FSIZE]
+ *	- weights_level2: int16_t[NEU2][NEU1]
+ *	- constants_recode_level1: int16_t[NEU1]
+ *	- constants_recode_level2: int16_t[NEU2]
+ * The function expect the adress of the first element in the array.
  */
-void nn_hardware(uint8_t **frames, uint32_t **results,
-		int32_t **weights_level1,
-		int32_t **weights_level2,
-		int32_t *constants_recode_level1,
-		int32_t *constants_recode_level2)
+void nn_hardware(uint8_t *frames, uint32_t *results,
+		int16_t *weights_level1,
+		int16_t *weights_level2,
+		int16_t *constants_recode_level1,
+		int16_t *constants_recode_level2)
 {
 	nn_process_config(weights_level1, weights_level2,
 			constants_recode_level1);
@@ -47,16 +48,17 @@ void nn_hardware(uint8_t **frames, uint32_t **results,
  * WARNING: arrays sizes must match the following:
  *	- frames: uint8_t[FRAMES_NB][FSIZE]
  *	- results: uint32_t[FRAMES_NB][NEU2]
- *	- weights_level1: int32_t[NEU1][FSIZE]
- *	- weights_level2: int32_t[NEU2][NEU1]
- *	- constants_recode_level1: int32_t[NEU1]
- *	- constants_recode_level2: int32_t[NEU2]
+ *	- weights_level1: int16_t[NEU1][FSIZE]
+ *	- weights_level2: int16_t[NEU2][NEU1]
+ *	- constants_recode_level1: int16_t[NEU1]
+ *	- constants_recode_level2: int16_t[NEU2]
+ * The function expect the adress of the first element in the array.
  */
-void nn_software(uint8_t **frames, uint32_t **results,
-		int32_t **weights_level1,
-		int32_t **weights_level2,
-		int32_t *constants_recode_level1,
-		int32_t *constants_recode_level2)
+void nn_software(uint8_t *frames, uint32_t *results,
+		int16_t *weights_level1,
+		int16_t *weights_level2,
+		int16_t *constants_recode_level1,
+		int16_t *constants_recode_level2)
 {
 	int64_t out1[NEU1] = {0};
 	int64_t out2[NEU2] = {0};
@@ -79,8 +81,8 @@ void nn_software(uint8_t **frames, uint32_t **results,
 		 */
 		for (i = 0; i < FSIZE; i++) {
 			for (n = 0; n < NEU1; n++) {
-				out1[n] +=
-					frames[image][i] * weights_level1[n][i];
+				out1[n] += frames[image * FSIZE + i] *
+					weights_level1[n * FSIZE + i];
 			}
 		}
 		/*
@@ -97,7 +99,8 @@ void nn_software(uint8_t **frames, uint32_t **results,
 		 */
 		for (i = 0; i < NEU1; i++) {
 			for (n = 0; n < NEU2; n++) {
-				out2[n] += out1[i] * weights_level2[n][i];
+				out2[n] += out1[i] *
+					weights_level2[n * NEU1 + i];
 			}
 		}
 		/*
@@ -108,7 +111,7 @@ void nn_software(uint8_t **frames, uint32_t **results,
 			out2[n] += constants_recode_level2[n];
 			out2[n] = (out2[n] > 0) ? out2[n] : 0;
 			out2[n] = cut(out2[n]);
-			results[image][n] = out2[n];
+			results[image * NEU2 + n] = out2[n];
 		}
 	}
 	soft_time = XTime_DiffCurrReal_Double(&oldtime);
@@ -122,17 +125,21 @@ void nn_process_clear()
 	// Reset the accelerator
 	accreg_clear();
 	while(accreg_check_clear());
+	accreg_set_lvl1_fsize(FSIZE);
+	accreg_set_lvl1_nbneu(NEU1);
+	accreg_set_lvl2_nbneu(NEU2);
 }
 
 /*
  * Configure the whole network.
  * WARNING: array sizes must match the following:
- *	- weights_level1: int32_t[NEU1][FSIZE]
- *	- weights_level2: int32_t[NEU2][NEU1]
- *	- constants_recode_level1: int32_t[NEU1]
+ *	- weights_level1: int16_t[NEU1][FSIZE]
+ *	- weights_level2: int16_t[NEU2][NEU1]
+ *	- constants_recode_level1: int16_t[NEU1]
+ * The function expect the adress of the first element in the array.
  */
-void nn_process_config(int32_t **weights_level1, int32_t **weights_level2,
-		int32_t *constants_recode_level1)
+void nn_process_config(int16_t *weights_level1, int16_t *weights_level2,
+		int16_t *constants_recode_level1)
 {
 	nn_config_level(weights_level1, LEVEL1);
 	nn_config_level(weights_level2, LEVEL2);
@@ -146,10 +153,11 @@ void nn_process_config(int32_t **weights_level1, int32_t **weights_level2,
  * WARNING: arrays sizes must match the following:
  *	- frames: uint8_t[FRAMES_NB][FSIZE]
  *	- results: uint32_t[FRAMES_NB][NEU2]
- *	- constants_recode_level2: uint32_t[NEU2]
+ *	- constants_recode_level2: uint16_t[NEU2]
+ * The function expect the adress of the first element in the array.
  */
-void nn_process_frames(uint8_t **frames, uint32_t **results,
-		int32_t *constants_recode_level2)
+void nn_process_frames(uint8_t *frames, uint32_t *results,
+		int16_t *constants_recode_level2)
 {
 	XTime oldtime;
 	int i, j;
@@ -168,9 +176,10 @@ void nn_process_frames(uint8_t **frames, uint32_t **results,
 	out_buffer_alloc = malloc_check(out_bufsize);
 	frames_buffer = (void*)uint_roundup((long)frames_buffer_alloc, 16 * 4);
 	out_buffer = (void*)uint_roundup((long)out_buffer_alloc, 16 * 4);
+
 	for (j = 0; j < FRAMES_NB; j++) {
 		for (i = 0; i < FSIZE; i++) {
-			frames_buffer[j * FSIZE + i] = ((uint8_t *)frames)[j * FSIZE + i];
+			frames_buffer[j * FSIZE + i] = frames[j * FSIZE + i];
 		}
 	}
 	// Flush cached data to DDR memory
@@ -206,7 +215,7 @@ void nn_process_frames(uint8_t **frames, uint32_t **results,
 
 	for (j = 0; j < FRAMES_NB; j++) {
 		for (i = 0; i < NEU2; i++) {
-			results[j][i] = out_buffer[j * NEU2 + i];
+			results[j * NEU2 + i] = out_buffer[j * NEU2 + i];
 		}
 	}
 
@@ -284,7 +293,7 @@ void nn_config_level(void *weights, enum level level)
 		for (j = 0; j < NEU2; j++) {
 			for (i = 0; i < NEU1; i++) {
 				config_buffer[j * NEU1 + i] =
-					((int16_t *)weights)[j * FSIZE + i];
+					((int16_t *)weights)[j * NEU1 + i];
 			}
 		}
 		break;
@@ -330,16 +339,17 @@ void nn_config_level(void *weights, enum level level)
  * WARNING: arrays sizes must match the following:
  *	- results: uint32_t[FRAMES_NB][NEU2]
  *	- classification: uint32_t[FRAMES_NB]
+ * The function expect the adress of the first element in the array.
  */
-void classify(uint32_t **results, uint32_t *classification)
+void classify(uint32_t *results, uint32_t *classification)
 {
 	int i, j;
-	uint32_t max[FRAMES_NB] = {-1};
+	uint32_t max[FRAMES_NB] = {0};
 
 	for (i = 0; i < FRAMES_NB; i++) {
 		for (j = 0; j < NEU2; j++) {
-			if (results[i][j] > max[i]) {
-				max[i] = results[i][j];
+			if (results[i * NEU2 + j] > max[i]) {
+				max[i] = results[i * NEU2 + j];
 				classification[i] = j;
 			}
 		}

@@ -8,27 +8,27 @@
 
 void nn_process_clear();
 
-void nn_process_config(int32_t **weights_level1, int32_t **weights_level2,
-		int32_t *constants_recode);
+void nn_process_config(int16_t *weights_level1, int16_t *weights_level2,
+		int16_t *constants_recode);
 
-void nn_process_frames(uint8_t **frames, uint32_t **results,
-		int32_t *constants_recode_level2);
+void nn_process_frames(uint8_t *frames, uint32_t *results,
+		int16_t *constants_recode_level2);
 void nn_process_frames_for_demo(int32_t* digit);
 
-void nn_hardware(uint8_t **frames, uint32_t **results,
-		int32_t **weights_level1,
-		int32_t **weights_level2,
-		int32_t *constants_recode_level1,
-		int32_t *constants_recode_level2);
+void nn_hardware(uint8_t *frames, uint32_t *results,
+		int16_t *weights_level1,
+		int16_t *weights_level2,
+		int16_t *constants_recode_level1,
+		int16_t *constants_recode_level2);
 
-void nn_software(uint8_t **frames, uint32_t **results,
-		int32_t **weights_level1,
-		int32_t **weights_level2,
-		int32_t *constants_recode_level1,
-		int32_t *constants_recode_level2);
+void nn_software(uint8_t *frames, uint32_t *results,
+		int16_t *weights_level1,
+		int16_t *weights_level2,
+		int16_t *constants_recode_level1,
+		int16_t *constants_recode_level2);
 
 int64_t cut(int64_t in);
-void classify(uint32_t **results, uint32_t *classification);
+void classify(uint32_t *results, uint32_t *classification);
 
 /*
  * Timings

@@ -26,6 +26,7 @@
 int main()
 {
 	int image, neuron;
+	int difference_soft_hard = 0;
 	uint32_t results_soft[FRAMES_NB][NEU2];
 	uint32_t results_hard[FRAMES_NB][NEU2];
 	uint32_t classification_soft[FRAMES_NB];
@@ -35,12 +36,14 @@ int main()
 
 	init_platform();
 
-	print("Hello World\n");
-	print("Waiting for 3s to let user connect UART...");
+	print("     --------------------------\n");
+	print("     | MENINGE NEURAL NETWORK |\n");
+	print("     | Paul Luperini          |\n");
+	print("     | Lucas Mahieu           |\n");
+	print("     | Hugues de Valon        |\n");
+	print("     --------------------------\n\n");
 	sleep(3);
-	print(" done\n");
 
-	print("Explicitely enabling UART Rx and Tx, no parity, no interrupts...\n");
 	// Explicitely enable Rx ad Tx
 	XUartPs_WriteReg(XPAR_PS7_UART_1_BASEADDR, XUARTPS_CR_OFFSET,
 			XUARTPS_CR_RX_EN | XUARTPS_CR_TX_EN);
@@ -51,30 +54,35 @@ int main()
 	XUartPs_WriteReg(XPAR_PS7_UART_1_BASEADDR, XUARTPS_IDR_OFFSET,
 			XUARTPS_IXR_MASK);
 
-#ifdef DEMO
-	start_demo();
-#else
-	//TODO
-	// * compiler et tester pour MNIST et normal
-	// * ajouter tableau images 0 à 9 pour démo dans dataset.h
-
 #ifdef MNIST
-	nn_hardware((uint8_t **)frames, (uint32_t **)results_hard,
-			(int32_t **)w1, (int32_t **)w2,
-			(int32_t *)b1, (int32_t *)b2);
-	nn_software((uint8_t **)frames, (uint32_t **)results_soft,
-			(int32_t **)w1, (int32_t **)w2,
-			(int32_t *)b1, (int32_t *)b2);
+	/*
+	 * On passe à la fonction un tableau à deux dimensions en lui donnant
+	 * l'adresse de la première case du tableau.
+	 */
+	printf("hardware computation... ");
+	fflush(stdout);
+	nn_hardware(&frames[0][0], &results_hard[0][0],	&w1[0][0], &w2[0][0],
+			b1, b2);
+	printf("done.\n");
+	printf("software computation... ");
+	fflush(stdout);
+	nn_software(&frames[0][0], &results_soft[0][0],	&w1[0][0], &w2[0][0],
+			b1, b2);
+	printf("done.\n");
 #else
-	nn_hardware((uint8_t **)data_frames, (uint32_t **)results_hard,
-			(int32_t **)config_neu1, (int32_t **)config_neu2,
-			(int32_t *)config_recode1, (int32_t *)config_recode2);
-	nn_software((uint8_t **)data_frames, (uint32_t **)results_soft,
-			(int32_t **)config_neu1, (int32_t **)config_neu2,
-			(int32_t *)config_recode1, (int32_t *)config_recode2);
+	printf("hardware computation... ");
+	fflush(stdout);
+	nn_hardware(&data_frames[0][0], &results_hard[0][0],
+			&config_neu1[0][0], &config_neu2[0][0],
+			config_recode1, config_recode2);
+	printf("done.\n");
+	printf("software computation... ");
+	fflush(stdout);
+	nn_software(&data_frames[0][0], &results_soft[0][0],
+			&config_neu1[0][0], &config_neu2[0][0],
+			config_recode1, config_recode2);
+	printf("done.\n");
 #endif /* MNIST */
-
-#endif
 
 	/*
 	 * Compare hard and soft results.
@@ -83,6 +91,7 @@ int main()
 		for (neuron = 0; neuron < NEU2; neuron++) {
 			if (results_soft[image][neuron] !=
 					results_hard[image][neuron]) {
+				difference_soft_hard = 1;
 				printf("WARNING: difference soft/hard\n");
 				printf("soft: image n°%3d, neurone n°%3d : %10lu\n",
 						image, neuron,
@@ -95,40 +104,45 @@ int main()
 			}
 		}
 	}
+	if (!difference_soft_hard) {
+		printf("no difference between software and hardware results.\n");
+	}
 
 	/*
 	 * Classify the results.
 	 */
-	classify((uint32_t **)results_hard, (uint32_t *)classification_hard);
-	classify((uint32_t **)results_soft, (uint32_t *)classification_soft);
+	classify(&results_hard[0][0], classification_hard);
+	classify(&results_soft[0][0], classification_soft);
 
 	/*
 	 * Compute hardware and software succes rates.
 	 */
 	for (image = 0; image < FRAMES_NB; image++) {
+		// A décommenter pour la démo n°2
+		//display(classification_hard[image]);
 		if (classification_hard[image] == labels[image]) {
 			success_hits_hard++;
 		}
 		if (classification_soft[image] == labels[image]) {
 			success_hits_soft++;
 		}
-		printf("hard, taux de réussite : %.2f%%\n",
-				(success_hits_hard / (float)FRAMES_NB) * 100);
-		printf("soft, taux de réussite : %.2f%%\n",
-				(success_hits_soft / (float)FRAMES_NB) * 100);
+
 	}
+	printf("hardware success rate: %.2f %%\n",
+			(success_hits_hard / (float)FRAMES_NB) * 100);
+	printf("software success rate: %.2f %%\n",
+			(success_hits_soft / (float)FRAMES_NB) * 100);
 
 	/*
 	 * Compare hard and soft timing performances.
 	 */
-	printf("%u frames\n:", FRAMES_NB);
-	printf("hardware: %3g seconds => %3g frames/s\n",
-			hard_time, FRAMES_NB/hard_time);
-	printf("software: %3g seconds => %3g frames/s\n",
-			soft_time, FRAMES_NB/soft_time);
-	printf("speedup is %g\n", soft_time / hard_time);
+	printf("%u frames\n", FRAMES_NB);
+	printf("hardware: %4.2g seconds => %5d frames/s\n",
+			hard_time, (int)(FRAMES_NB/hard_time));
+	printf("software: %4.2g seconds => %5d frames/s\n",
+			soft_time, (int)(FRAMES_NB/soft_time));
+	printf("speedup is %d\n", (int)(soft_time / hard_time));
 
-	print("Finished - Entering infinite loop\n");
 	while(1);
 
 	cleanup_platform();
@@ -157,7 +171,7 @@ void* malloc_with_loc(unsigned size, char* file, unsigned line)
 	void* ptr = malloc(size);
 	if (ptr == NULL) {
 		abort_printf(
-			"From %s:%u : malloc() returned NULL for size %u\n",
+				"From %s:%u : malloc() returned NULL for size %u\n",
 				file, line, size);
 	}
 	return ptr;
