@@ -114,6 +114,7 @@ int main()
 	classify(&results_hard[0][0], classification_hard);
 	classify(&results_soft[0][0], classification_soft);
 
+#ifdef MNIST
 	/*
 	 * Compute hardware and software succes rates.
 	 */
@@ -132,6 +133,7 @@ int main()
 			(success_hits_hard / (float)FRAMES_NB) * 100);
 	printf("software success rate: %.2f %%\n",
 			(success_hits_soft / (float)FRAMES_NB) * 100);
+#endif
 
 	/*
 	 * Compare hard and soft timing performances.
