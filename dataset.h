@@ -54,7 +54,7 @@ const uint8_t data_frames[FRAMES_NB][FSIZE] = {
  * MNIST data
  */
 
-#define FRAMES_NB 1000
+#define FRAMES_NB 10
 #define FSIZE     784
 #define NEU1      100
 #define NEU2      10
