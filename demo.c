@@ -5,7 +5,7 @@ void display(int digit)
 	switch(digit) {
 
 		case 0:
-			printf("\n\n");
+			printf("\n");
 			printf("                         000000000     \n");
 			printf("                       00:::::::::00   \n");
 			printf("                     00:::::::::::::00 \n");
@@ -22,11 +22,11 @@ void display(int digit)
 			printf("                     00:::::::::::::00 \n");
 			printf("                       00:::::::::00   \n");
 			printf("                         000000000     \n");
-			printf("\n\n");
+			printf("\n");
 			break;
 
 		case 1:
-			printf("\n\n");
+			printf("\n");
 			printf("                          1111111   \n");
 			printf("                         1::::::1   \n");
 			printf("                        1:::::::1   \n");
@@ -43,11 +43,11 @@ void display(int digit)
 			printf("                        1::::::::::1\n");
 			printf("                        1::::::::::1\n");
 			printf("                        111111111111\n");
-			printf("\n\n");
+			printf("\n");
 			break;
 
 		case 2:
-			printf("\n\n");
+			printf("\n");
 			printf("                     222222222222222    \n");
 			printf("                    2:::::::::::::::22  \n");
 			printf("                    2::::::222222:::::2 \n");
@@ -64,11 +64,11 @@ void display(int digit)
 			printf("                    2::::::2222222:::::2\n");
 			printf("                    2::::::::::::::::::2\n");
 			printf("                    22222222222222222222\n");
-			printf("\n\n");
+			printf("\n");
 			break;
 
 		case 3:
-			printf("\n\n");
+			printf("\n");
 			printf("                     333333333333333   \n");
 			printf("                    3:::::::::::::::33 \n");
 			printf("                    3::::::33333::::::3\n");
@@ -85,11 +85,11 @@ void display(int digit)
 			printf("                    3::::::33333::::::3\n");
 			printf("                    3:::::::::::::::33 \n");
 			printf("                     333333333333333   \n");
-			printf("\n\n");
+			printf("\n");
 			break;
 
 		case 4:
-			printf("\n\n");
+			printf("\n");
 			printf("                           444444444  \n");
 			printf("                          4::::::::4  \n");
 			printf("                         4:::::::::4  \n");
@@ -106,11 +106,11 @@ void display(int digit)
 			printf("                            44::::::44\n");
 			printf("                            4::::::::4\n");
 			printf("                            4444444444\n");
-			printf("\n\n");
+			printf("\n");
 			break;
 
 		case 5:
-			printf("\n\n");
+			printf("\n");
 			printf("                    555555555555555555 \n");
 			printf("                    5::::::::::::::::5 \n");
 			printf("                    5::::::::::::::::5 \n");
@@ -127,10 +127,10 @@ void display(int digit)
 			printf("                     55:::::::::::::55 \n");
 			printf("                       55:::::::::55   \n");
 			printf("                         555555555     \n");
-			printf("\n\n");
+			printf("\n");
 			break;
 		case 6:
-			printf("\n\n");
+			printf("\n");
 			printf("                            66666666    \n");
 			printf("                           6::::::6     \n");
 			printf("                          6::::::6      \n");
@@ -147,10 +147,10 @@ void display(int digit)
 			printf("                     66:::::::::::::66  \n");
 			printf("                       66:::::::::66    \n");
 			printf("                         666666666      \n");
-			printf("\n\n");
+			printf("\n");
 			break;
 		case 7:
-			printf("\n\n");
+			printf("\n");
 			printf("                    77777777777777777777\n");
 			printf("                    7::::::::::::::::::7\n");
 			printf("                    7::::::::::::::::::7\n");
@@ -167,10 +167,10 @@ void display(int digit)
 			printf("                      7::::::7          \n");
 			printf("                     7::::::7           \n");
 			printf("                    77777777            \n");
-			printf("\n\n");
+			printf("\n");
 			break;
 		case 8:
-			printf("\n\n");
+			printf("\n");
 			printf("                         888888888      \n");
 			printf("                       88:::::::::88    \n");
 			printf("                     88:::::::::::::88  \n");
@@ -187,10 +187,10 @@ void display(int digit)
 			printf("                     88:::::::::::::88  \n");
 			printf("                       88:::::::::88    \n");
 			printf("                         888888888      \n");
-			printf("\n\n");
+			printf("\n");
 			break;
 		case 9:
-			printf("\n\n");
+			printf("\n");
 			printf("                         999999999      \n");
 			printf("                       99:::::::::99    \n");
 			printf("                     99:::::::::::::99  \n");
@@ -207,7 +207,7 @@ void display(int digit)
 			printf("                         9::::::9       \n");
 			printf("                        9::::::9        \n");
 			printf("                       99999999         \n");
-			printf("\n\n");
+			printf("\n");
 			break;
 		default:
 			break;

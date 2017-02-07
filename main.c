@@ -36,15 +36,6 @@ int main()
 
 	init_platform();
 
-	print("     --------------------------\n");
-	print("     | MENINGE NEURAL NETWORK |\n");
-	print("     | DEMO VERSION           |\n");
-	print("     | Paul Luperini          |\n");
-	print("     | Lucas Mahieu           |\n");
-	print("     | Hugues de Valon        |\n");
-	print("     --------------------------\n\n");
-	sleep(8);
-
 	// Explicitely enable Rx ad Tx
 	XUartPs_WriteReg(XPAR_PS7_UART_1_BASEADDR, XUARTPS_CR_OFFSET,
 			XUARTPS_CR_RX_EN | XUARTPS_CR_TX_EN);
@@ -54,6 +45,15 @@ int main()
 	// Disable interrupts
 	XUartPs_WriteReg(XPAR_PS7_UART_1_BASEADDR, XUARTPS_IDR_OFFSET,
 			XUARTPS_IXR_MASK);
+
+		print("     --------------------------\r\n");
+		print("     | MENINGE NEURAL NETWORK |\r\n");
+		print("     | DEMO VERSION           |\r\n");
+		print("     | Paul Luperini          |\r\n");
+		print("     | Lucas Mahieu           |\r\n");
+		print("     | Hugues de Valon        |\r\n");
+		print("     --------------------------\r\n\n");
+		sleep(8);
 
 	nn_hardware(&frames[0][0], &results_hard[0][0],	&w1[0][0], &w2[0][0],
 			b1, b2);
